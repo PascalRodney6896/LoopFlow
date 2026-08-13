@@ -1,0 +1,546 @@
+@model LoopFlow.Models.Buyer
+@{
+    ViewBag.Title = "Merchant Portal & Wallet";
+    Layout = null;
+    var wallet = ViewBag.Wallet as LoopFlow.Models.LoopAccount;
+    var cashForecasts = ViewBag.CashForecasts as System.Collections.Generic.List<LoopFlow.Models.CashFlowForecast> ?? new System.Collections.Generic.List<LoopFlow.Models.CashFlowForecast>();
+    var investmentRecs = ViewBag.InvestmentRecs as System.Collections.Generic.List<LoopFlow.Models.InvestmentRecommendation> ?? new System.Collections.Generic.List<LoopFlow.Models.InvestmentRecommendation>();
+    var loanTransactions = ViewBag.LoanTransactions as System.Collections.Generic.List<LoopFlow.Models.LoanTransaction> ?? new System.Collections.Generic.List<LoopFlow.Models.LoanTransaction>();
+
+    decimal availableCredit = Model?.CreditLimit != null ? Model.CreditLimit.AvailableCredit : 350000.00m;
+    decimal usedCredit = Model?.CreditLimit != null ? Model.CreditLimit.UsedCredit : 150000.00m;
+    decimal totalCredit = Model?.CreditLimit != null ? Model.CreditLimit.TotalCreditLimit : 500000.00m;
+    decimal usedPct = totalCredit > 0 ? (usedCredit / totalCredit) * 100 : 30m;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>LOOP FLOW — Merchant Portal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="~/Content/site.css" />
+</head>
+<body>
+
+    <!-- Page Wrapper -->
+    <div class="buyer-dashboard-wrapper">
+        <!-- Mobile Bottom Navigation - 5 Tabs per Section A1 -->
+        <nav class="mobile-bottom-nav">
+            <div class="nav-item active" data-tab="home">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 01-1-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z" />
+                </svg>
+                <span class="nav-label">Home</span>
+            </div>
+            <div class="nav-item" data-tab="orders">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 022 2h2a2 2 0 022-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    <path d="M9 12l2 2 4-4" />
+                </svg>
+                <span class="nav-label">Orders</span>
+            </div>
+            <div class="nav-item" data-tab="credit">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span class="nav-label">Credit</span>
+            </div>
+            <div class="nav-item" data-tab="forecast">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                </svg>
+                <span class="nav-label">Merchant-Brain</span>
+            </div>
+            <div class="nav-item" data-tab="profile">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span class="nav-label">Profile</span>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <div class="main-content-area">
+
+            <!-- HOME TAB -->
+            <div class="tab-content active" id="home-tab">
+
+                <!-- Custom Merchant Header -->
+                <div class="buyer-header">
+                    <div class="buyer-header-left">
+                        <div class="buyer-avatar">
+                            <span>@(Model?.User?.FullName?.FirstOrDefault() ?? 'W')</span>
+                        </div>
+                        <div class="buyer-greeting">
+                            <span class="greeting-label">Welcome, Merchant</span>
+                            <span class="greeting-name">@(Model?.User != null ? Model.User.FullName : "Wanjiku Cooperative")</span>
+                            <span class="greeting-badge">@(Model?.BusinessCategory ?? "Agri-Merchant")</span>
+                        </div>
+                    </div>
+                    <div class="buyer-header-right">
+                        <button class="icon-btn notification-btn" aria-label="Notifications" onclick="navigateToTab('forecast')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span class="notification-badge">3</span>
+                        </button>
+                        <button class="icon-btn settings-btn" aria-label="Settings" id="hamburgerMenu">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path d="M12 8v4l3 3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slide-out Hamburger Menu -->
+                <div class="slide-menu" id="slideMenu">
+                    <div class="slide-menu-header">
+                        <div class="slide-menu-user">
+                            <div class="user-avatar-lg">@(Model?.User?.FullName?.FirstOrDefault() ?? 'M')</div>
+                            <div class="user-info">
+                                <p class="user-name-sm">@(Model?.User != null ? Model.User.FullName : "Merchant Partner")</p>
+                                <span class="user-role">Merchant Central</span>
+                            </div>
+                        </div>
+                        <button class="close-menu-btn" id="closeMenu">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="slide-menu-items">
+                        <a href="@Url.Action("Index", "Merchant")" class="menu-item active">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 01-1-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z" /></svg>
+                            Merchant Dashboard
+                        </a>
+                        <a href="@Url.Action("CreateRequest", "Merchant")" class="menu-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4" /></svg>
+                            New Purchase Order
+                        </a>
+                        <a href="@Url.Action("Index", "Supplier")" class="menu-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                            Supplier Portal
+                        </a>
+                        <a href="@Url.Action("Index", "Financier")" class="menu-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Financier Underwriter Portal
+                        </a>
+                    </div>
+                </div>
+                <div class="slide-overlay" id="slideOverlay"></div>
+
+                <!-- Bank Account Card - Total Balance with Tap to Show Loop Wallet -->
+                <div class="bank-account-card" id="balanceCard">
+                    <div class="account-card-content">
+                        <div class="account-header">
+                            <span class="account-label" id="balanceLabel">NCBA Bank Account Balance</span>
+                            <span class="live-badge">Live</span>
+                        </div>
+                        <div class="account-balance" id="balanceDisplay">
+                            <span class="currency-symbol">KES</span>
+                            <span class="balance-amount" id="balanceAmount">@string.Format("{0:N0}", wallet != null ? wallet.AccountBalance : 120000)</span>
+                            <span class="balance-decimal">.00</span>
+                        </div>
+                        <div class="account-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Account Name</span>
+                                <span class="detail-value">@(Model?.User != null ? Model.User.FullName : "Merchant Account")</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Account Number</span>
+                                <span class="detail-value">@(wallet != null ? wallet.AccountNumber : "0100987654321")</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Bank</span>
+                                <span class="detail-value">NCBA Bank Kenya</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">LOOP Wallet</span>
+                                <span class="detail-value">@(wallet != null ? wallet.WalletNumber : "2020019988")</span>
+                            </div>
+                        </div>
+                        <div class="tap-hint">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v1" />
+                            </svg>
+                            <span>Tap to toggle NCBA Account / LOOP Wallet Balance</span>
+                        </div>
+                    </div>
+                    <div class="account-card-decoration">
+                        <div class="deco-circle"></div>
+                        <div class="deco-circle-2"></div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("CreateRequest", "Merchant")'">
+                        <div class="quick-action-icon" style="background: #e0f2fe; color: #0284c7;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 4v16m8-8H4" />
+                            </svg>
+                        </div>
+                        <span class="quick-action-label">New Order</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="navigateToTab('credit')">
+                        <div class="quick-action-icon" style="background: #fef3c7; color: #d97706;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <span class="quick-action-label">SME Credit</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="navigateToTab('forecast')">
+                        <div class="quick-action-icon" style="background: #d1fae5; color: #059669;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <span class="quick-action-label">Smart Treasury</span>
+                    </button>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="quick-stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Average Monthly Spend</span>
+                        <span class="stat-number">KES @string.Format("{0:N0}", Model?.AverageMonthlySpend ?? 650000)</span>
+                        <span class="stat-change positive">+15% YoY</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Active Orders</span>
+                        <span class="stat-number">@(Model?.PurchaseOrders?.Count ?? 2)</span>
+                        <span class="stat-change">Verified Trade</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Credit Score & Line</span>
+                        <span class="stat-number">@(Model?.CreditScore ?? 88)/100</span>
+                        <span class="stat-change">@string.Format("{0:N0}", availableCredit) Available</span>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="recent-activity">
+                    <div class="section-header">
+                        <h3 class="section-title">Recent Transactions & Repayments</h3>
+                    </div>
+                    <div class="activity-list">
+                        @if (loanTransactions != null && loanTransactions.Any())
+                        {
+                            foreach (var txn in loanTransactions.Take(4))
+                            {
+                                <div class="activity-item">
+                                    <div class="activity-icon @(txn.TransactionType == "Disbursement" ? "credit" : "debit")">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            @if (txn.TransactionType == "Disbursement")
+                                            {
+                                                <path d="M12 4v16m8-8H4" />
+                                            }
+                                            else
+                                            {
+                                                <path d="M20 12H4" />
+                                            }
+                                        </svg>
+                                    </div>
+                                    <div class="activity-content">
+                                        <span class="activity-title">@txn.TransactionType — @txn.Notes</span>
+                                        <span class="activity-time">Ref: @txn.TransactionReference</span>
+                                    </div>
+                                    <span class="activity-amount @(txn.TransactionType == "Disbursement" ? "positive" : "negative")">
+                                        @(txn.TransactionType == "Disbursement" ? "+" : "-")KES @string.Format("{0:N0}", txn.Amount)
+                                    </span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="activity-item">
+                                <div class="activity-icon credit">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4" /></svg>
+                                </div>
+                                <div class="activity-content">
+                                    <span class="activity-title">Buyer Collection Sweep</span>
+                                    <span class="activity-time">Automated 30% Repayment Sweep</span>
+                                </div>
+                                <span class="activity-amount positive">+KES 45,000</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORDERS TAB (Section A2: Minimal Orders Table) -->
+            <div class="tab-content" id="orders-tab">
+                <div class="orders-header">
+                    <h2 class="orders-title">Orders & Trade Financing</h2>
+                    <button class="new-order-btn" onclick="window.location.href='@Url.Action("CreateRequest", "Merchant")'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create Purchase Order
+                    </button>
+                </div>
+
+                <!-- Orders Table - Minimal styling per Section A2 -->
+                <div class="orders-table-wrapper overflow-x-auto" style="scrollbar-width: thin;">
+                    <table class="orders-table text-xs w-full">
+                        <thead>
+                            <tr class="text-gray-500 font-normal border-b">
+                                <th class="fw-normal py-2">Order No</th>
+                                <th class="fw-normal py-2">Amount</th>
+                                <th class="fw-normal py-2">Funding</th>
+                                <th class="fw-normal py-2">Status</th>
+                                <th class="fw-normal py-2">Supplier</th>
+                                <th class="fw-normal py-2">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model?.PurchaseOrders != null && Model.PurchaseOrders.Any())
+                            {
+                                foreach (var po in Model.PurchaseOrders.OrderByDescending(p => p.Id))
+                                {
+                                    <tr class="border-b text-gray-700 font-normal">
+                                        <td class="py-2"><span class="order-number font-normal text-gray-700">@po.OrderNumber</span></td>
+                                        <td class="py-2 text-gray-700 font-normal">KES @string.Format("{0:N0}", po.TotalAmount)</td>
+                                        <td class="py-2">
+                                            <span class="badge bg-light text-dark border font-normal text-[9px]">
+                                                @(po.FundingPath != null ? po.FundingPath.Replace("_", " ") : "BANK FINANCED")
+                                            </span>
+                                        </td>
+                                        <td class="py-2">
+                                            @if (po.Status == "Approved" || po.Status == "Funded" || po.Status == "Completed")
+                                            {
+                                                <span class="status-badge approved font-normal text-[9px]">@po.Status</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="status-badge pending font-normal text-[9px]">@po.Status</span>
+                                            }
+                                        </td>
+                                        <td class="py-2 text-gray-600 font-normal">
+                                            @foreach (var s in po.SupplierSplits.Take(1))
+                                            {
+                                                <span class="supplier-name font-normal">@s.SupplierName</span>
+                                                if (po.SupplierSplits.Count > 1)
+                                                {
+                                                    <span class="text-gray-400 text-[9px]"> +@(po.SupplierSplits.Count - 1)</span>
+                                                }
+                                            }
+                                        </td>
+                                        <!-- Section A2: dd/MM/yy date format -->
+                                        <td class="py-2 text-gray-500 font-normal text-[10px]">@po.OrderDate.ToString("dd/MM/yy")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-3 text-muted font-normal">No purchase orders found.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- CREDIT TAB (Section A1: Dedicated SME Credit Facility Tab) -->
+            <div class="tab-content" id="credit-tab">
+                <div class="orders-header">
+                    <h2 class="orders-title">LOOP SME Credit Facility</h2>
+                    <span class="badge bg-amber-100 text-amber-800 text-xs px-2.5 py-1 font-normal">Pre-Approved Line</span>
+                </div>
+
+                <!-- Pre-Approved Credit Facility Card -->
+                <div class="credit-card mb-3">
+                    <div class="credit-header">
+                        <div class="credit-title">
+                            <span class="credit-label">Pre-Approved Facility</span>
+                            <span class="credit-status active">Active</span>
+                        </div>
+                        <span class="credit-provider">NCBA Bank Underwritten</span>
+                    </div>
+                    <div class="credit-balance">
+                        <span class="credit-amount">KES @string.Format("{0:N0}", availableCredit)</span>
+                        <span class="credit-available">Available Trade Financing Limit</span>
+                    </div>
+                    <div class="credit-progress">
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: @usedPct%"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>Utilized: KES @string.Format("{0:N0}", usedCredit)</span>
+                            <span>Total Facility: KES @string.Format("{0:N0}", totalCredit)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loan Repayment Status & Automated Sweep Tracker -->
+                <div class="bg-white rounded-xl border border-gray-100 p-3 mb-3 shadow-sm">
+                    <h3 class="text-xs font-semibold text-gray-800 mb-2">Loan Repayment & Automated Sales Sweep</h3>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="p-2 bg-gray-50 rounded">
+                            <span class="text-gray-400 text-[10px] block">Outstanding Balance</span>
+                            <span class="font-semibold text-gray-900 text-sm">KES @string.Format("{0:N0}", usedCredit)</span>
+                        </div>
+                        <div class="p-2 bg-gray-50 rounded">
+                            <span class="text-gray-400 text-[10px] block">Daily Sweep Mechanism</span>
+                            <span class="font-semibold text-green-600 text-sm">30% Sales Deduction</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loan Transactions & Repayment Ledger -->
+                <div class="recent-activity">
+                    <div class="section-header">
+                        <h3 class="section-title">Loan Repayment Ledger</h3>
+                    </div>
+                    <div class="activity-list">
+                        @if (loanTransactions != null && loanTransactions.Any())
+                        {
+                            foreach (var txn in loanTransactions)
+                            {
+                                <div class="activity-item">
+                                    <div class="activity-icon @(txn.TransactionType == "Disbursement" ? "debit" : "credit")">
+                                        <i class="bi @(txn.TransactionType == "Disbursement" ? "bi-arrow-down-left" : "bi-arrow-up-right")"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <span class="activity-title">@txn.TransactionType — @txn.Notes</span>
+                                        <span class="activity-time">Ref: @txn.TransactionReference • @txn.CreatedAt.ToString("dd/MM/yy")</span>
+                                    </div>
+                                    <span class="activity-amount @(txn.TransactionType == "Disbursement" ? "negative" : "positive")">
+                                        @(txn.TransactionType == "Disbursement" ? "-" : "+")KES @string.Format("{0:N0}", txn.Amount)
+                                    </span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="activity-item">
+                                <div class="activity-icon credit">
+                                    <i class="bi bi-check-circle"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <span class="activity-title">Automated Sales Repayment Sweep</span>
+                                    <span class="activity-time">NCBA Loan Settlement</span>
+                                </div>
+                                <span class="activity-amount positive">+KES 45,000</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORECAST & MERCHANT BRAIN TAB -->
+            <div class="tab-content" id="forecast-tab">
+                <div class="forecast-header">
+                    <h2 class="forecast-title">Merchant Brain — Cash Flow & Treasury</h2>
+                    <span class="forecast-period">AI Predictive Analytics</span>
+                </div>
+
+                <!-- Feature Cards Grid -->
+                <div class="forecast-features-grid">
+                    <!-- Feature 1: Cash Flow Forecasting -->
+                    <div class="forecast-feature-card">
+                        <div class="feature-icon" style="background: #dbeafe; color: #2563eb;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                            </svg>
+                        </div>
+                        <h4 class="feature-title">30-Day Cash Flow Forecast</h4>
+                        <p class="feature-desc">Projected Inflow: KES 1,200,000 | Outflow: KES 650,000</p>
+                        <div class="feature-status active">Net Surplus: KES 550,000</div>
+                    </div>
+
+                    <!-- Feature 2: Liquidity Crisis & Gap Detector -->
+                    <div class="forecast-feature-card">
+                        <div class="feature-icon" style="background: #fce4ec; color: #dc2626;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h4 class="feature-title">Funding Gap Detector</h4>
+                        <p class="feature-desc">Early warning gap detected for upcoming supplier restocking</p>
+                        <div class="feature-status warning">Gap: KES 12,500 Detected</div>
+                    </div>
+
+                    <!-- Feature 3: Smart Treasury & MMF Allocator -->
+                    <div class="forecast-feature-card">
+                        <div class="feature-icon" style="background: #e0e7ff; color: #4f46e5;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h4 class="feature-title">Smart Treasury MMF Sweep</h4>
+                        <p class="feature-desc">NCBA Loop Money Market Fund @@ 11.85% p.a.</p>
+                        <div class="feature-status success">KES 250,000 Surplus MMF</div>
+                    </div>
+                </div>
+
+                <!-- Forecast Summary -->
+                <div class="forecast-summary-card">
+                    <div class="forecast-metric">
+                        <span class="forecast-label">Projected Surplus</span>
+                        <span class="forecast-value positive">KES 550,000</span>
+                        <span class="forecast-date">Next 30 Days</span>
+                    </div>
+                    <div class="forecast-metric">
+                        <span class="forecast-label">Available Credit</span>
+                        <span class="forecast-value positive">KES @string.Format("{0:N0}", availableCredit)</span>
+                        <span class="forecast-date">Instant Inventory Financing</span>
+                    </div>
+                    <div class="forecast-metric">
+                        <span class="forecast-label">MMF Yield Rate</span>
+                        <span class="forecast-value" style="color: #4f46e5;">11.85% p.a.</span>
+                        <span class="forecast-date">NCBA Money Market Fund</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="forecast-actions-grid">
+                    <button class="forecast-action-btn primary" onclick="window.location.href='@Url.Action("CreateRequest", "Merchant")'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4" /></svg>
+                        Finance Funding Gap
+                    </button>
+                    <button class="forecast-action-btn secondary" onclick="alert('NCBA Loop MMF Investment Placement Submitted! KES 250,000 allocated at 11.85% p.a.')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Invest Surplus in MMF
+                    </button>
+                </div>
+            </div>
+
+            <!-- PROFILE TAB -->
+            <div class="tab-content" id="profile-tab">
+                <div class="profile-header">
+                    <div class="profile-avatar-large">@(Model?.User?.FullName?.FirstOrDefault() ?? 'M')</div>
+                    <h2 class="profile-name">@(Model?.User != null ? Model.User.FullName : "Wanjiku Farmer Co-op")</h2>
+                    <span class="profile-role">Commercial Merchant</span>
+                    <span class="profile-code">Merchant Code: @(Model?.BuyerCode ?? "BUY-001")</span>
+                </div>
+                <div class="profile-details">
+                    <div class="profile-detail-item">
+                        <span class="detail-label">Business Category</span>
+                        <span class="detail-value">@(Model?.BusinessCategory ?? "Agriculture & Retail")</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="detail-label">Credit Rating Score</span>
+                        <span class="detail-value">@(Model?.CreditScore ?? 88)/100 (Tier 1)</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="detail-label">Total Purchases</span>
+                        <span class="detail-value">KES @string.Format("{0:N0}", Model?.TotalPurchases ?? 3200000)</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/Scripts/Custom/buyer-dashboard.js"></script>
+
+</body>
+</html>

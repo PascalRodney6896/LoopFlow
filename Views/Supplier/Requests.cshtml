@@ -1,0 +1,220 @@
+@model System.Collections.Generic.List<LoopFlow.Models.SupplierSplit>
+@{
+    ViewBag.Title = "Pending Supplier Requests";
+    Layout = "~/Views/Shared/_Layout_Supplier.cshtml";
+    var activeSupplier = ViewBag.ActiveSupplier as LoopFlow.Models.Supplier;
+}
+
+<div class="px-2 py-1">
+    <div class="flex items-center justify-between mb-3">
+        <div>
+            <h1 class="text-base font-bold text-gray-900">Pending Supplier Requests</h1>
+            <p class="text-xs text-gray-500">
+                Review buyer-initiated purchase orders and invoices requiring supplier verification, inventory confirmation, or action.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="badge bg-amber-100 text-amber-800 font-bold px-2 py-1 text-[10px]">
+                @Model.Count Action(s) Pending
+            </span>
+        </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm mb-3">
+        <form method="get" action="@Url.Action("Requests", "Supplier")" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.SearchTerm" class="form-control bg-light border-start-0" placeholder="Search order #, merchant, invoice..." />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="statusFilter" class="form-select form-select-sm bg-light">
+                    <option value="">All Verification Statuses</option>
+                    <option value="PENDING_VERIFICATION" @(ViewBag.StatusFilter == "PENDING_VERIFICATION" ? "selected" : "")>Pending Verification</option>
+                    <option value="VERIFIED" @(ViewBag.StatusFilter == "VERIFIED" ? "selected" : "")>Verified</option>
+                    <option value="REJECTED" @(ViewBag.StatusFilter == "REJECTED" ? "selected" : "")>Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-3 flex gap-2">
+                <button type="submit" class="btn btn-sm btn-dark text-xs flex-1"><i class="bi bi-filter me-1"></i> Filter</button>
+                <a href="@Url.Action("Requests", "Supplier")" class="btn btn-sm btn-outline-secondary text-xs">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        @if (Model.Count == 0)
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-check2-circle text-gray-300 text-4xl block mb-2"></i>
+                <p class="text-xs font-semibold text-gray-600">No pending verification requests</p>
+                <span class="text-[10px] text-gray-400">All purchase orders and invoices are up to date.</span>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-xs">
+                    <thead class="table-light text-[10px] text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th>Order & PO #</th>
+                            <th>Merchant / Business</th>
+                            <th>Invoice #</th>
+                            <th>Amount & Currency</th>
+                            <th>Order Date</th>
+                            <th>Required Delivery</th>
+                            <th>Verification Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var req in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="font-bold text-gray-900">
+                                        <a href="@Url.Action("OrderDetails", "Supplier", new { id = req.OrderId })" class="hover:text-[#ff5f00]">
+                                            Order #@(req.Order != null ? req.Order.OrderNumber : "")
+                                        </a>
+                                    </div>
+                                    <span class="text-[9px] text-gray-400 font-mono">PO-ID: #@req.OrderId</span>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-gray-800">
+                                        @(req.Order?.Buyer?.User?.FullName ?? req.Order?.Buyer?.User?.BusinessName ?? "Merchant")
+                                    </div>
+                                    <span class="text-[9px] text-gray-400">Code: @(req.Order?.Buyer?.BuyerCode ?? "BUY-001")</span>
+                                </td>
+                                <td>
+                                    <span class="font-mono text-gray-700">
+                                        @(string.IsNullOrEmpty(req.InvoiceNumber) ? "INV-PENDING" : req.InvoiceNumber)
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="font-bold text-gray-900">KES @string.Format("{0:N2}", req.Amount)</div>
+                                    <span class="text-[9px] text-gray-400">Qty: @(req.Quantity ?? 1) @(req.ItemDescription)</span>
+                                </td>
+                                <td class="text-gray-500">
+                                    @(req.Order != null ? req.Order.OrderDate.ToString("dd MMM yyyy") : req.CreatedAt.ToString("dd MMM yyyy"))
+                                </td>
+                                <td class="text-gray-500">
+                                    @(req.Order?.RequiredDeliveryDate.HasValue == true ? req.Order.RequiredDeliveryDate.Value.ToString("dd MMM yyyy") : "Standard")
+                                </td>
+                                <td>
+                                    @if (req.VerificationStatus == "VERIFIED")
+                                    {
+                                        <span class="badge bg-green-100 text-green-800 text-[9px] px-2 py-1"><i class="bi bi-check-circle me-1"></i> VERIFIED</span>
+                                    }
+                                    else if (req.VerificationStatus == "REJECTED")
+                                    {
+                                        <span class="badge bg-red-100 text-red-800 text-[9px] px-2 py-1"><i class="bi bi-x-circle me-1"></i> REJECTED</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-amber-100 text-amber-800 text-[9px] px-2 py-1"><i class="bi bi-clock me-1"></i> PENDING VERIFICATION</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-1">
+                                        <button class="btn btn-sm btn-outline-primary text-[10px] py-1 px-2" data-bs-toggle="modal" data-bs-target="#reviewModal-@req.Id">
+                                            Review
+                                        </button>
+
+                                        @if (req.VerificationStatus == "PENDING_VERIFICATION")
+                                        {
+                                            using (Html.BeginForm("ConfirmTransaction", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                                            {
+                                                <input type="hidden" name="splitId" value="@req.Id" />
+                                                <button type="submit" class="btn btn-sm btn-success text-[10px] py-1 px-2">
+                                                    Confirm
+                                                </button>
+                                            }
+                                            <button class="btn btn-sm btn-outline-danger text-[10px] py-1 px-2" data-bs-toggle="modal" data-bs-target="#rejectModal-@req.Id">
+                                                Reject
+                                            </button>
+                                        }
+                                    </div>
+
+                                    <!-- Review Modal -->
+                                    <div class="modal fade" id="reviewModal-@req.Id" tabindex="-1">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header py-2 bg-light">
+                                                    <h6 class="modal-title font-bold text-xs">Review Purchase Order & Request</h6>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body text-xs space-y-2">
+                                                    <div class="p-2 bg-gray-50 rounded border">
+                                                        <div class="flex justify-between font-bold">
+                                                            <span>Order Number:</span>
+                                                            <span class="text-[#ff5f00]">#@(req.Order?.OrderNumber)</span>
+                                                        </div>
+                                                        <div class="flex justify-between">
+                                                            <span>Merchant:</span>
+                                                            <span>@(req.Order?.Buyer?.User?.FullName)</span>
+                                                        </div>
+                                                        <div class="flex justify-between">
+                                                            <span>Total Order Amount:</span>
+                                                            <span>KES @string.Format("{0:N2}", req.Order?.TotalAmount ?? 0)</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-2 border rounded">
+                                                        <p class="font-bold text-gray-800 mb-1">Supplier Item & Split Details:</p>
+                                                        <p>Item: <strong>@req.ItemDescription</strong></p>
+                                                        <p>Supplier Amount: <strong>KES @string.Format("{0:N2}", req.Amount)</strong></p>
+                                                        <p>Status: <span class="font-semibold">@req.VerificationStatus</span></p>
+                                                    </div>
+                                                    <div class="alert alert-info py-1.5 px-2 text-[10px] mb-0">
+                                                        <i class="bi bi-shield-check me-1"></i> As a commercial counterparty, verifying confirms item authenticity and inventory readiness. You do not manage credit policy.
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer py-1.5 bg-light">
+                                                    <button type="button" class="btn btn-sm btn-secondary text-xs" data-bs-dismiss="modal">Close</button>
+                                                    @if (req.VerificationStatus == "PENDING_VERIFICATION")
+                                                    {
+                                                        using (Html.BeginForm("ConfirmTransaction", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                                                        {
+                                                            <input type="hidden" name="splitId" value="@req.Id" />
+                                                            <button type="submit" class="btn btn-sm btn-success text-xs">Confirm Transaction</button>
+                                                        }
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Reject Modal -->
+                                    <div class="modal fade" id="rejectModal-@req.Id" tabindex="-1">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                @using (Html.BeginForm("RejectTransaction", "Supplier", FormMethod.Post))
+                                                {
+                                                    <input type="hidden" name="splitId" value="@req.Id" />
+                                                    <div class="modal-header py-2 bg-red-50">
+                                                        <h6 class="modal-title font-bold text-xs text-red-800">Reject Request with Reason</h6>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body text-xs space-y-2">
+                                                        <p class="text-gray-600">Specify why you are rejecting Order #@(req.Order?.OrderNumber):</p>
+                                                        <textarea name="rejectionReason" rows="3" class="form-control text-xs" placeholder="e.g. Item out of stock, pricing discrepancy, invalid purchase order terms..." required></textarea>
+                                                    </div>
+                                                    <div class="modal-footer py-1.5 bg-light">
+                                                        <button type="button" class="btn btn-sm btn-secondary text-xs" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-sm btn-danger text-xs">Submit Rejection</button>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

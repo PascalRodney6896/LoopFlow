@@ -1,0 +1,143 @@
+@model LoopFlow.Models.Supplier
+@{
+    ViewBag.Title = "Supplier Profile & Settlement Settings";
+    Layout = "~/Views/Shared/_Layout_Supplier.cshtml";
+
+    var auditLogs = ViewBag.AuditLogs as System.Collections.Generic.List<LoopFlow.Models.AuditLog> ?? new System.Collections.Generic.List<LoopFlow.Models.AuditLog>();
+}
+
+<div class="px-2 py-1 space-y-3">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-base font-bold text-gray-900">Supplier Business Profile & Settlement Account</h1>
+            <p class="text-xs text-gray-500">
+                Manage commercial registration, tax information, contact details, settlement bank accounts, and view security audit logs.
+            </p>
+        </div>
+        <div>
+            <span class="badge bg-green-100 text-green-800 font-bold text-[10px] px-2.5 py-1">
+                KYC Status: @(Model.KYCStatus ?? "Verified")
+            </span>
+        </div>
+    </div>
+
+    <!-- 8. PROFILE & SETTLEMENT EDIT GRID -->
+    <div class="grid grid-cols-12 gap-3">
+        <!-- LEFT COLUMN: Business Profile Details -->
+        <div class="col-span-12 lg:col-span-6 space-y-3">
+            <div class="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-building me-1 text-loop"></i> Business Registration & Contact Details</h6>
+                @using (Html.BeginForm("UpdateProfile", "Supplier", FormMethod.Post, new { @class = "space-y-2 text-xs" }))
+                {
+                    <div>
+                        <label class="font-semibold text-gray-700">Business / Trade Name:</label>
+                        <input type="text" class="form-control form-control-sm text-xs bg-gray-50" value="@(Model.User?.FullName ?? Model.User?.BusinessName)" disabled />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="font-semibold text-gray-700">Business Registration #:</label>
+                            <input type="text" name="businessRegistration" value="@Model.BusinessRegistration" class="form-control form-control-sm text-xs" required />
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-700">KRA Tax PIN:</label>
+                            <input type="text" name="kraPin" value="@Model.KRA_PIN" class="form-control form-control-sm text-xs" required />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="font-semibold text-gray-700">Business Category / Industry:</label>
+                        <input type="text" name="businessCategory" value="@Model.BusinessCategory" class="form-control form-control-sm text-xs" required />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="font-semibold text-gray-700">Contact Phone:</label>
+                            <input type="text" name="contactPhone" value="@Model.ContactPhone" class="form-control form-control-sm text-xs" required />
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-700">Contact Email:</label>
+                            <input type="email" name="contactEmail" value="@Model.ContactEmail" class="form-control form-control-sm text-xs" required />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="font-semibold text-gray-700">Business Address:</label>
+                        <input type="text" name="businessAddress" value="@Model.BusinessAddress" class="form-control form-control-sm text-xs" required />
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-sm btn-dark text-xs"><i class="bi bi-save me-1"></i> Save Profile Details</button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Settlement Account & Audit Log -->
+        <div class="col-span-12 lg:col-span-6 space-y-3">
+            <!-- Settlement Account Management -->
+            <div class="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm">
+                <div class="flex items-center justify-between border-b pb-1.5 mb-2">
+                    <h6 class="font-bold text-xs text-gray-800 margin-0"><i class="bi bi-bank me-1 text-green-600"></i> Settlement Account & Payment Details</h6>
+                    <span class="badge bg-amber-100 text-amber-800 text-[9px]"><i class="bi bi-shield-lock me-1"></i> Audited Action</span>
+                </div>
+                @using (Html.BeginForm("UpdateSettlementAccount", "Supplier", FormMethod.Post, new { @class = "space-y-2 text-xs" }))
+                {
+                    <div>
+                        <label class="font-semibold text-gray-700">Settlement Bank Name:</label>
+                        <input type="text" name="settlementBank" value="@Model.SettlementBank" class="form-control form-control-sm text-xs" required />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="font-semibold text-gray-700">Settlement Account Number:</label>
+                            <input type="text" name="settlementAccount" value="@Model.SettlementAccount" class="form-control form-control-sm text-xs font-mono" required />
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-700">Account Name:</label>
+                            <input type="text" name="settlementAccountName" value="@Model.SettlementAccountName" class="form-control form-control-sm text-xs" required />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="font-semibold text-gray-700">Payment Channel Details (Paybill / Till):</label>
+                        <input type="text" name="paymentDetails" value="@Model.PaymentDetails" class="form-control form-control-sm text-xs" placeholder="e.g. Paybill: 888222 | Account: SUP-001" />
+                    </div>
+
+                    <div class="alert alert-warning text-[10px] py-1.5 px-2 mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Audit Security Requirement:</strong> Any changes to settlement or payment account details require explicit authorization and will generate an immutable audit log entry.
+                    </div>
+
+                    <div class="pt-1">
+                        <button type="submit" class="btn btn-sm btn-success text-xs"><i class="bi bi-check-circle me-1"></i> Authorize & Update Settlement Account</button>
+                    </div>
+                }
+            </div>
+
+            <!-- Profile Security Audit Trail -->
+            <div class="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-clock-history me-1 text-gray-600"></i> Profile Security Audit Log</h6>
+                @if (auditLogs.Count == 0)
+                {
+                    <p class="text-xs text-gray-400">No profile change audit events registered yet.</p>
+                }
+                else
+                {
+                    <div class="space-y-1.5 text-[10px]">
+                        @foreach (var log in auditLogs)
+                        {
+                            <div class="p-2 bg-gray-50 rounded border border-gray-100 flex justify-between items-center">
+                                <div>
+                                    <span class="font-bold text-gray-900">@log.ActionType</span>
+                                    <p class="text-gray-500 my-0">@log.NewValue</p>
+                                </div>
+                                <span class="text-gray-400 font-mono text-[9px]">@log.Timestamp.ToString("dd MMM, HH:mm")</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

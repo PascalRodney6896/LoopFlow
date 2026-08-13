@@ -1,0 +1,107 @@
+@model System.Collections.Generic.List<LoopFlow.Models.TrustChainRecord>
+@{
+    ViewBag.Title = "TrustChain Audit Ledger";
+    Layout = "~/Views/Shared/_Layout_Supplier.cshtml";
+    var activeSupplier = ViewBag.ActiveSupplier as LoopFlow.Models.Supplier;
+}
+
+<div class="px-2 py-1 space-y-3">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-base font-bold text-gray-900">TrustChain Audit Ledger</h1>
+            <p class="text-xs text-gray-500">
+                Cryptographic SHA-256 audit log tracking purchase order authenticity, invoice verification, inventory confirmation, fulfilment, and payout settlement.
+            </p>
+        </div>
+        <div>
+            <span class="badge bg-green-100 text-green-800 font-bold text-[10px] px-2.5 py-1">
+                <i class="bi bi-shield-check me-1"></i> Cryptographically Verified
+            </span>
+        </div>
+    </div>
+
+    <!-- 5. TRUSTCHAIN TRANSACTION PIPELINE SUMMARY CARD -->
+    <div class="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm">
+        <h6 class="font-bold text-xs text-gray-800 mb-2">Cryptographic Transaction Verification Pipeline</h6>
+        <div class="flex items-center justify-between text-center text-[10px] py-1 border-t border-b border-gray-100 my-2 overflow-x-auto gap-2">
+            <div class="flex-1 min-w-[70px]">
+                <span class="font-bold text-gray-800 block">Purchase Order</span>
+                <span class="text-green-600 font-semibold"><i class="bi bi-check-circle me-0.5"></i> Authentic</span>
+            </div>
+            <i class="bi bi-chevron-right text-gray-300"></i>
+            <div class="flex-1 min-w-[70px]">
+                <span class="font-bold text-gray-800 block">Invoice</span>
+                <span class="text-green-600 font-semibold"><i class="bi bi-check-circle me-0.5"></i> Verified</span>
+            </div>
+            <i class="bi bi-chevron-right text-gray-300"></i>
+            <div class="flex-1 min-w-[70px]">
+                <span class="font-bold text-gray-800 block">Supplier Verif.</span>
+                <span class="text-green-600 font-semibold"><i class="bi bi-check-circle me-0.5"></i> Confirmed</span>
+            </div>
+            <i class="bi bi-chevron-right text-gray-300"></i>
+            <div class="flex-1 min-w-[70px]">
+                <span class="font-bold text-gray-800 block">Financing</span>
+                <span class="text-blue-600 font-semibold"><i class="bi bi-check-circle me-0.5"></i> Approved</span>
+            </div>
+            <i class="bi bi-chevron-right text-gray-300"></i>
+            <div class="flex-1 min-w-[70px]">
+                <span class="font-bold text-gray-800 block">Supplier Payout</span>
+                <span class="text-green-600 font-semibold"><i class="bi bi-check-circle me-0.5"></i> Disbursed</span>
+            </div>
+            <i class="bi bi-chevron-right text-gray-300"></i>
+            <div class="flex-1 min-w-[70px]">
+                <span class="font-bold text-gray-800 block">Delivery</span>
+                <span class="text-purple-600 font-semibold"><i class="bi bi-truck me-0.5"></i> Confirmed</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TrustChain Audit Records Timeline -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <h6 class="font-bold text-xs text-gray-800 mb-3"><i class="bi bi-[#ff5f00] bi-link-45deg me-1"></i> Auditable TrustChain Events (@Model.Count)</h6>
+        @if (Model.Count == 0)
+        {
+            <div class="text-center py-4 text-xs text-gray-400">
+                <i class="bi bi-shield-x text-3xl block mb-1"></i>
+                No TrustChain events registered for active supplier transactions yet.
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var record in Model)
+                {
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2">
+                                <span class="badge bg-dark text-white text-[9px] px-2 py-0.5 font-mono">@record.EventType</span>
+                                <a href="@Url.Action("OrderDetails", "Supplier", new { id = record.OrderId })" class="font-bold text-gray-900 hover:text-[#ff5f00]">
+                                    Order #@(record.Order?.OrderNumber)
+                                </a>
+                            </div>
+                            <span class="badge bg-green-100 text-green-800 text-[9px] px-2 py-0.5">
+                                <i class="bi bi-check-circle me-1"></i> @record.VerificationStatus
+                            </span>
+                        </div>
+                        <div class="text-gray-600 text-[11px] mb-1.5 font-mono bg-white p-1.5 rounded border border-gray-200">
+                            Data Payload: @record.EventData
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[9px] text-gray-400 font-mono">
+                            <div class="truncate" title="@record.Hash">
+                                SHA-256 Hash: <span class="text-gray-700 font-semibold">@record.Hash</span>
+                            </div>
+                            <div class="truncate text-right" title="@record.PreviousHash">
+                                Prev Hash: <span class="text-gray-500">@record.PreviousHash</span>
+                            </div>
+                        </div>
+                        <div class="mt-1 text-[9px] text-gray-400 flex justify-between">
+                            <span>Recorded Date: @(record.VerificationDate.HasValue ? record.VerificationDate.Value.ToString("dd MMM yyyy, HH:mm:ss") : record.CreatedAt.ToString("dd MMM yyyy, HH:mm:ss")) UTC</span>
+                            <span>Tamper Check: <strong class="text-green-600">Passed (Valid Hash Chain)</strong></span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

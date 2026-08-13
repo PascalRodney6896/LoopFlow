@@ -1,0 +1,148 @@
+@model System.Collections.Generic.List<LoopFlow.Models.SupplierSplit>
+@{
+    ViewBag.Title = "Supplier Payments & Payouts";
+    Layout = "~/Views/Shared/_Layout_Supplier.cshtml";
+    var activeSupplier = ViewBag.ActiveSupplier as LoopFlow.Models.Supplier;
+}
+
+<div class="px-2 py-1">
+    <div class="flex items-center justify-between mb-3">
+        <div>
+            <h1 class="text-base font-bold text-gray-900">Supplier Payments & Payouts</h1>
+            <p class="text-xs text-gray-500">
+                Track real-time disbursements, settlement references, and payment statuses resulting from verified merchant financing.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="badge bg-green-100 text-green-800 font-bold text-[10px] px-2.5 py-1">
+                @Model.Count(p => p.IsPaid || p.PaymentStatus == "COMPLETED") Completed Payout(s)
+            </span>
+        </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm mb-3">
+        <form method="get" action="@Url.Action("Payments", "Supplier")" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.SearchTerm" class="form-control bg-light border-start-0 text-xs" placeholder="Search payment ref, invoice #, PO #..." />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="paymentStatus" class="form-select form-select-sm bg-light text-xs">
+                    <option value="">All Payment Lifecycle States</option>
+                    <option value="PENDING" @(ViewBag.SelectedPaymentStatus == "PENDING" ? "selected" : "")>Payment Pending</option>
+                    <option value="PROCESSING" @(ViewBag.SelectedPaymentStatus == "PROCESSING" ? "selected" : "")>Processing</option>
+                    <option value="COMPLETED" @(ViewBag.SelectedPaymentStatus == "COMPLETED" ? "selected" : "")>Completed</option>
+                    <option value="FAILED" @(ViewBag.SelectedPaymentStatus == "FAILED" ? "selected" : "")>Failed</option>
+                    <option value="REVERSED" @(ViewBag.SelectedPaymentStatus == "REVERSED" ? "selected" : "")>Reversed</option>
+                </select>
+            </div>
+            <div class="col-md-3 flex gap-1">
+                <button type="submit" class="btn btn-sm btn-dark text-xs flex-1"><i class="bi bi-filter"></i> Filter</button>
+                <a href="@Url.Action("Payments", "Supplier")" class="btn btn-sm btn-outline-secondary text-xs">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 6. PAYMENTS & 7. RECENT PAYOUTS TABLE -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        @if (Model.Count == 0)
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-credit-card text-gray-300 text-4xl block mb-2"></i>
+                <p class="text-xs font-semibold text-gray-600">No payment records found</p>
+                <span class="text-[10px] text-gray-400">When merchant financing is executed, direct payouts via LOOP Send Money API will appear here.</span>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-xs">
+                    <thead class="table-light text-[10px] text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th>Payment Reference</th>
+                            <th>Purchase Order #</th>
+                            <th>Invoice Reference</th>
+                            <th>Merchant Counterparty</th>
+                            <th>Amount & Currency</th>
+                            <th>Payment Date</th>
+                            <th>Payment Lifecycle Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model)
+                        {
+                            bool isCompleted = p.IsPaid || p.PaymentStatus == "COMPLETED";
+                            string statusDisplay = isCompleted ? "COMPLETED" : (p.PaymentStatus ?? "PENDING");
+
+                            <tr>
+                                <td>
+                                    <div class="font-mono font-bold text-gray-900">
+                                        @(string.IsNullOrEmpty(p.TransactionReference) ? (isCompleted ? "TXN-LOOP-DISB-SETTLED" : "AWAITING_DISBURSEMENT") : p.TransactionReference)
+                                    </div>
+                                    <span class="text-[9px] text-gray-400">Channel: LOOP Send Money API</span>
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("OrderDetails", "Supplier", new { id = p.OrderId })" class="font-bold text-gray-800 hover:text-[#ff5f00]">
+                                        #@(p.Order?.OrderNumber)
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="font-mono text-gray-700">
+                                        @(string.IsNullOrEmpty(p.InvoiceNumber) ? "INV-PENDING" : p.InvoiceNumber)
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-gray-800">
+                                        @(p.Order?.Buyer?.User?.FullName ?? "Commercial Merchant")
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-bold text-green-700">KES @string.Format("{0:N2}", p.Amount)</div>
+                                    <span class="text-[9px] text-gray-400">Currency: KES</span>
+                                </td>
+                                <td class="text-gray-500">
+                                    @(p.PaymentDate.HasValue ? p.PaymentDate.Value.ToString("dd MMM yyyy, HH:mm") : p.CreatedAt.ToString("dd MMM yyyy"))
+                                </td>
+                                <td>
+                                    @if (statusDisplay == "COMPLETED")
+                                    {
+                                        <span class="badge bg-green-100 text-green-800 text-[9px] px-2.5 py-1">
+                                            <i class="bi bi-check-circle-fill me-1"></i> COMPLETED
+                                        </span>
+                                    }
+                                    else if (statusDisplay == "PROCESSING")
+                                    {
+                                        <span class="badge bg-blue-100 text-blue-800 text-[9px] px-2.5 py-1">
+                                            <i class="bi bi-arrow-repeat me-1"></i> PROCESSING
+                                        </span>
+                                    }
+                                    else if (statusDisplay == "FAILED")
+                                    {
+                                        <span class="badge bg-red-100 text-red-800 text-[9px] px-2.5 py-1">
+                                            <i class="bi bi-exclamation-octagon me-1"></i> FAILED
+                                        </span>
+                                    }
+                                    else if (statusDisplay == "REVERSED")
+                                    {
+                                        <span class="badge bg-purple-100 text-purple-800 text-[9px] px-2.5 py-1">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> REVERSED
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-amber-100 text-amber-800 text-[9px] px-2.5 py-1">
+                                            <i class="bi bi-clock me-1"></i> PAYMENT PENDING
+                                        </span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

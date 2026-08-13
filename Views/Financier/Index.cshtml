@@ -1,0 +1,321 @@
+@model System.Collections.Generic.List<LoopFlow.Models.Buyer>
+@{
+    ViewBag.Title = "LOOP Bank Risk & Portfolio";
+    Layout = "~/Views/Shared/_Layout_Financier.cshtml";
+    var loans = ViewBag.Loans as System.Collections.Generic.List<LoopFlow.Models.LoanTransaction> ?? new System.Collections.Generic.List<LoopFlow.Models.LoanTransaction>();
+    var totalBuyers = Model?.Count ?? 0;
+    var totalCreditLimit = Model?.Sum(b => b.CreditLimit?.TotalCreditLimit ?? 0) ?? 0;
+    var totalOutstanding = Model?.Sum(b => b.CreditLimit?.UsedCredit ?? 0) ?? 0;
+    var totalLoans = loans.Count;
+
+    // Calculate average credit score safely (handling null or string values)
+    var avgCreditScore = 0;
+    if (Model != null && Model.Any())
+    {
+        var scores = Model.Where(b => b.CreditScore > 0).Select(b => b.CreditScore);
+        if (scores.Any())
+        {
+            avgCreditScore = (int)scores.Average();
+        }
+    }
+
+    // Calculate high risk buyers (credit score < 60)
+    var highRiskBuyers = Model?.Count(b => b.CreditScore < 60) ?? 0;
+}
+
+<div class="px-4 py-3 financier-dashboard">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-3">
+        <div>
+            <h1 class="text-lg font-bold text-gray-900">LOOP Bank Risk & Portfolio</h1>
+            <p class="text-xs text-gray-500">Real-time risk monitoring, dynamic credit line utilization, automated daily sweep performance, and NPL staging.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-[10px] text-gray-500">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</span>
+            <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+        </div>
+    </div>
+
+    <!-- STATISTICS CARDS ROW - 4 Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <!-- Total Buyers -->
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="stat-label">Total Buyers</p>
+                    <p class="stat-number">@totalBuyers</p>
+                </div>
+                <div class="stat-icon" style="background: #dbeafe; color: #2563eb;">
+                    <i class="bi bi-people"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Credit Portfolio -->
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="stat-label">Total Credit Portfolio</p>
+                    <p class="stat-number text-loop">KES @string.Format("{0:N0}", totalCreditLimit)</p>
+                </div>
+                <div class="stat-icon" style="background: #d1fae5; color: #059669;">
+                    <i class="bi bi-credit-card"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outstanding Loans -->
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="stat-label">Outstanding Loans</p>
+                    <p class="stat-number" style="color: #d97706;">KES @string.Format("{0:N0}", totalOutstanding)</p>
+                </div>
+                <div class="stat-icon" style="background: #fef3c7; color: #d97706;">
+                    <i class="bi bi-wallet2"></i>
+                </div>
+            </div>
+            @if (totalOutstanding > 0)
+            {
+                var utilization = totalCreditLimit > 0 ? (totalOutstanding / totalCreditLimit * 100) : 0;
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-[10px] text-amber-600 font-medium"><i class="bi bi-exclamation-circle"></i> @utilization.ToString("F0")% utilization</span>
+                </div>
+            }
+        </div>
+
+        <!-- High Risk Alerts -->
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="stat-label">High Risk Alerts</p>
+                    <p class="stat-number" style="color: #dc2626;">@highRiskBuyers</p>
+                </div>
+                <div class="stat-icon" style="background: #fce4ec; color: #dc2626;">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="text-[10px] text-red-600 font-medium"><i class="bi bi-arrow-up"></i> @(highRiskBuyers > 0 ? "Needs attention" : "All clear")</span>
+                <span class="text-[9px] text-gray-400">score below 60</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT GRID -->
+    <div class="grid grid-cols-12 gap-3">
+
+        <!-- LEFT PANEL (Cols 1 to 8) -->
+        <div class="col-span-12 lg:col-span-8 space-y-3">
+
+            <!-- Buyer Risk Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                @foreach (var buyer in Model.Take(4))
+                {
+                    <div class="buyer-risk-card">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-sm">@(buyer.User != null ? buyer.User.FullName : "Buyer")</h4>
+                                <p class="text-[10px] text-gray-500">@buyer.BusinessCategory | Code: <span class="font-mono">@buyer.BuyerCode</span></p>
+                            </div>
+                            @{
+                                var score = buyer.CreditScore;
+                                var scoreClass = score >= 80 ? "high" : score >= 60 ? "medium" : "low";
+                            }
+                            <span class="credit-score @scoreClass">
+                                Score: @score/100
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="metric-box">
+                                <span class="metric-label">Credit Limit</span>
+                                <strong class="metric-value text-blue-600">KES @string.Format("{0:N0}", buyer.CreditLimit?.TotalCreditLimit ?? 0)</strong>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">Outstanding</span>
+                                <strong class="metric-value text-amber-600">KES @string.Format("{0:N0}", buyer.CreditLimit?.UsedCredit ?? 0)</strong>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">Sweep</span>
+                                <strong class="metric-value text-green-600">30.0%</strong>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Active Portfolio Loan Disbursements -->
+            <div class="activity-card">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="font-bold text-gray-800 text-xs">
+                        <i class="bi bi-arrow-left-right me-2" style="color: #2563eb;"></i>
+                        Active Portfolio Loan Disbursements & Daily Repayment Sweeps
+                    </h4>
+                    <a href="@Url.Action("Loans", "Financier")" class="text-[10px] text-loop font-medium">View All</a>
+                </div>
+                <div class="table-wrapper">
+                    <table class="portfolio-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Buyer Name</th>
+                                <th>Transaction Type</th>
+                                <th>Amount</th>
+                                <th>Balance Before</th>
+                                <th>Balance After</th>
+                                <th>Reference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (loans.Any())
+                            {
+                                foreach (var l in loans.Take(8))
+                                {
+                                    <tr>
+                                        <td class="text-[10px] text-gray-500">@l.CreatedAt.ToString("g")</td>
+                                        <td class="text-xs font-medium text-gray-800">@(l.Buyer != null && l.Buyer.User != null ? l.Buyer.User.FullName : "")</td>
+                                        <td>
+                                            @if (l.TransactionType == "Disbursement")
+                                            {
+                                                <span class="status-badge disbursement">Disbursement</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="status-badge sweep">Daily 30% Sweep</span>
+                                            }
+                                        </td>
+                                        <td class="text-xs font-bold">KES @string.Format("{0:N0}", l.Amount)</td>
+                                        <td class="text-[10px] text-gray-500">KES @string.Format("{0:N0}", l.BalanceBefore)</td>
+                                        <td class="text-xs font-semibold text-gray-800">KES @string.Format("{0:N0}", l.BalanceAfter)</td>
+                                        <td><code class="text-[9px]">@l.TransactionReference</code></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center text-gray-500 py-4 text-xs">No loan transactions recorded</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL (Cols 9 to 12) -->
+        <div class="col-span-12 lg:col-span-4 space-y-3">
+
+            <!-- Quick Actions -->
+            <div class="quick-actions-card">
+                <h5 class="font-bold text-gray-800 text-xs mb-2">Quick Actions</h5>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("Buyers", "Financier")'">
+                        <div class="quick-action-icon" style="background: #dbeafe; color: #2563eb;">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <span class="quick-action-label">View Buyers</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("Loans", "Financier")'">
+                        <div class="quick-action-icon" style="background: #d1fae5; color: #059669;">
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <span class="quick-action-label">Loans</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("Risk", "Financier")'">
+                        <div class="quick-action-icon" style="background: #fef3c7; color: #d97706;">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <span class="quick-action-label">Risk Reports</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("TrustChain", "Financier")'">
+                        <div class="quick-action-icon" style="background: #e0e7ff; color: #4f46e5;">
+                            <i class="bi bi-link-45deg"></i>
+                        </div>
+                        <span class="quick-action-label">TrustChain</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Portfolio Summary -->
+            <div class="portfolio-summary-card">
+                <h5 class="font-bold text-gray-800 text-xs mb-2">Portfolio Summary</h5>
+                <div class="summary-stats">
+                    <div class="summary-item">
+                        <span class="summary-label">Credit Utilization</span>
+                        <span class="summary-value" style="color: #d97706;">
+                            @(totalCreditLimit > 0 ? (totalOutstanding / totalCreditLimit * 100).ToString("F1") : "0")%
+                        </span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Active Buyers</span>
+                        <span class="summary-value text-blue-600">@totalBuyers</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Avg Credit Score</span>
+                        <span class="summary-value text-green-600">
+                            @avgCreditScore
+                        </span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Sweeps</span>
+                        <span class="summary-value text-green-600">
+                            @loans.Count(l => l.TransactionType != "Disbursement")
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="activity-card">
+                <div class="flex justify-between items-center mb-3">
+                    <h5 class="font-bold text-gray-800 text-xs">Recent Activity</h5>
+                    <a href="#" class="text-[10px] text-loop font-medium">View All</a>
+                </div>
+                <div class="feed-list">
+                    <div class="feed-item">
+                        <div class="feed-icon" style="background: #d1fae5; color: #059669;">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <div class="feed-content">
+                            <p class="feed-title">Loan disbursed to Wema Hardware</p>
+                            <p class="feed-time">2 hours ago</p>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="feed-icon" style="background: #fef3c7; color: #d97706;">
+                            <i class="bi bi-clock"></i>
+                        </div>
+                        <div class="feed-content">
+                            <p class="feed-title">Sweep payment received KES 14,190</p>
+                            <p class="feed-time">4 hours ago</p>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="feed-icon" style="background: #dbeafe; color: #2563eb;">
+                            <i class="bi bi-credit-card"></i>
+                        </div>
+                        <div class="feed-content">
+                            <p class="feed-title">New credit line approved for Jambo Supplies</p>
+                            <p class="feed-time">Yesterday, 3:15 PM</p>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="feed-icon" style="background: #fce4ec; color: #dc2626;">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <div class="feed-content">
+                            <p class="feed-title">NPL alert: 30+ days overdue</p>
+                            <p class="feed-time">Yesterday, 11:30 AM</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    @* No Chart.js needed for financier dashboard *@
+}

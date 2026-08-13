@@ -1,0 +1,49 @@
+@model System.Collections.Generic.List<LoopFlow.Models.TrustChainRecord>
+@{
+    ViewBag.Title = "TrustChain Audit Trail";
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-shield-check text-success me-2"></i> TrustChain Cryptographic Audit Ledger</h2>
+        <p class="text-muted">Immutable SHA-256 hash chains guaranteeing auditability for Purchase Orders, Multi-Party Settlements, and Disbursed Loans.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="glass-card p-4">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0">
+                    <thead>
+                        <tr class="text-muted small border-bottom border-secondary">
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Order Ref</th>
+                            <th>Event Type</th>
+                            <th>Cryptographic SHA-256 Hash</th>
+                            <th>Previous Block Hash</th>
+                            <th>Verification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model)
+                        {
+                            <tr>
+                                <td>#@r.Id</td>
+                                <td class="text-muted small">@r.CreatedAt.ToString("g")</td>
+                                <td><code class="fw-bold text-info">@(r.Order != null ? r.Order.OrderNumber : "")</code></td>
+                                <td><span class="badge bg-info bg-opacity-25 text-info border border-info">@r.EventType</span></td>
+                                <td><code class="text-warning small text-break">@r.Hash</code></td>
+                                <td><code class="text-muted small text-break">@r.PreviousHash</code></td>
+                                <td>
+                                    <span class="badge bg-success bg-opacity-25 text-success border border-success"><i class="bi bi-check-circle me-1"></i> @r.VerificationStatus</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

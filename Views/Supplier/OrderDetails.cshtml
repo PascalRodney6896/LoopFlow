@@ -1,0 +1,200 @@
+@model LoopFlow.Models.PurchaseOrder
+@{
+    ViewBag.Title = "Order Details - " + Model.OrderNumber;
+    Layout = "~/Views/Shared/_Layout_Supplier.cshtml";
+
+    var activeSupplier = ViewBag.ActiveSupplier as LoopFlow.Models.Supplier;
+    var supplierSplits = ViewBag.SupplierSplits as System.Collections.Generic.List<LoopFlow.Models.SupplierSplit> ?? new System.Collections.Generic.List<LoopFlow.Models.SupplierSplit>();
+    var trustChainRecords = ViewBag.TrustChainRecords as System.Collections.Generic.List<LoopFlow.Models.TrustChainRecord> ?? new System.Collections.Generic.List<LoopFlow.Models.TrustChainRecord>();
+
+    // Order Lifecycle Progress Calculation
+    string[] stages = new string[] { "Order Received", "Accepted", "Inventory Confirmed", "Dispatched", "Delivered", "Paid" };
+    int currentStageIndex = 0;
+    if (Model.FulfilmentStatus == "Accepted") { currentStageIndex = 1; }
+    else if (Model.FulfilmentStatus == "Inventory Confirmed") { currentStageIndex = 2; }
+    else if (Model.FulfilmentStatus == "Dispatched") { currentStageIndex = 3; }
+    else if (Model.FulfilmentStatus == "Delivered") { currentStageIndex = 4; }
+    else if (Model.FulfilmentStatus == "Paid" || Model.Status == "Completed") { currentStageIndex = 5; }
+}
+
+<div class="px-2 py-1 space-y-3">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <a href="@Url.Action("Orders", "Supplier")" class="btn btn-sm btn-outline-secondary text-xs"><i class="bi bi-arrow-left"></i> Back</a>
+            <div>
+                <h1 class="text-base font-bold text-gray-900">Purchase Order #@Model.OrderNumber</h1>
+                <p class="text-xs text-gray-500">Order Date: @Model.OrderDate.ToString("dd MMMM yyyy, HH:mm") • Payment Method: @Model.PaymentMethod</p>
+            </div>
+        </div>
+        <div>
+            <span class="badge bg-dark font-bold text-xs px-3 py-1.5">
+                Stage: @Model.FulfilmentStatus
+            </span>
+        </div>
+    </div>
+
+    <!-- 3. ORDER LIFECYCLE PROGRESS BAR -->
+    <!-- Order Lifecycle: Order Received → Accepted → Inventory Confirmed → Fulfilment → Dispatched → Delivered → Paid -->
+    <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+        <h6 class="font-bold text-xs text-gray-800 mb-3"><i class="bi bi-diagram-3 me-1 text-loop"></i> Core Supplier Order Lifecycle</h6>
+        <div class="grid grid-cols-6 gap-2 text-center relative">
+            @for (int i = 0; i < stages.Length; i++)
+            {
+                bool isCompleted = i <= currentStageIndex;
+                bool isCurrent = i == currentStageIndex;
+
+                <div class="flex flex-col items-center">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs mb-1.5 transition-all @(isCompleted ? "bg-[#ff5f00] text-white" : "bg-gray-100 text-gray-400") @(isCurrent ? "ring-4 ring-orange-200" : "")">
+                        @if (isCompleted)
+                        {
+                            <i class="bi bi-check-lg"></i>
+                        }
+                        else
+                        {
+                            <span>@(i + 1)</span>
+                        }
+                    </div>
+                    <span class="text-[10px] font-semibold @(isCompleted ? "text-gray-900" : "text-gray-400")">@stages[i]</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- DETAILS GRID -->
+    <div class="grid grid-cols-12 gap-3">
+        <!-- LEFT COLUMN: Merchant & Order Items -->
+        <div class="col-span-12 lg:col-span-8 space-y-3">
+            <!-- Merchant Information (Privacy Guarded: No Credit Score or Account Balance Exposed) -->
+            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-building me-1 text-blue-600"></i> Merchant Information</h6>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-gray-400 text-[10px]">Merchant Name / Business:</span>
+                        <p class="font-bold text-gray-900">@(Model.Buyer?.User?.FullName ?? Model.Buyer?.User?.BusinessName ?? "Commercial Merchant")</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px]">Business Category:</span>
+                        <p class="font-semibold text-gray-800">@(Model.Buyer?.BusinessCategory ?? "SME Counterparty")</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px]">Merchant Code:</span>
+                        <p class="font-mono text-gray-700">@(Model.Buyer?.BuyerCode ?? "BUY-001")</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px]">Verification Status:</span>
+                        <p><span class="badge bg-green-100 text-green-800 text-[9px]">Verified Commercial Merchant</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Items & Supplier Share -->
+            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-box-seam me-1 text-purple-600"></i> Order Items & Supplier Split</h6>
+                <table class="table table-sm align-middle text-xs mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item Description</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total Amount</th>
+                            <th>Invoice Ref</th>
+                            <th>Payout Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var split in supplierSplits)
+                        {
+                            <tr>
+                                <td class="font-semibold text-gray-800">@split.ItemDescription</td>
+                                <td>@(split.Quantity ?? 1)</td>
+                                <td>KES @string.Format("{0:N2}", split.UnitPrice ?? split.Amount)</td>
+                                <td class="font-bold text-gray-900">KES @string.Format("{0:N2}", split.Amount)</td>
+                                <td class="font-mono text-gray-600">@(split.InvoiceNumber ?? "Not Issued")</td>
+                                <td>
+                                    @if (split.IsPaid || split.PaymentStatus == "COMPLETED")
+                                    {
+                                        <span class="badge bg-green-100 text-green-800 text-[9px]">PAID</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-amber-100 text-amber-800 text-[9px]">@split.PaymentStatus</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Lifecycle Actions -->
+            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2"><i class="bi bi-lightning-charge me-1 text-amber-600"></i> Supplier Lifecycle Controls</h6>
+                <div class="flex flex-wrap gap-2">
+                    @if (Model.SupplierVerificationStatus == "PENDING_VERIFICATION")
+                    {
+                        using (Html.BeginForm("ConfirmTransaction", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                        {
+                            <input type="hidden" name="splitId" value="@(supplierSplits.FirstOrDefault()?.Id ?? 0)" />
+                            <button type="submit" class="btn btn-sm btn-success text-xs">Verify & Confirm Transaction</button>
+                        }
+                    }
+                    @if (!Model.InventoryAvailabilityConfirmed && Model.SupplierVerificationStatus == "VERIFIED")
+                    {
+                        using (Html.BeginForm("ConfirmInventory", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                        {
+                            <input type="hidden" name="orderId" value="@Model.Id" />
+                            <button type="submit" class="btn btn-sm btn-info text-white text-xs">Confirm Inventory Readiness</button>
+                        }
+                    }
+                    @if (Model.FulfilmentStatus == "Inventory Confirmed" || Model.FulfilmentStatus == "Accepted")
+                    {
+                        using (Html.BeginForm("ConfirmDispatch", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                        {
+                            <input type="hidden" name="orderId" value="@Model.Id" />
+                            <button type="submit" class="btn btn-sm btn-primary text-xs">Confirm Dispatch</button>
+                        }
+                    }
+                    @if (Model.FulfilmentStatus == "Dispatched")
+                    {
+                        using (Html.BeginForm("ConfirmDelivery", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                        {
+                            <input type="hidden" name="orderId" value="@Model.Id" />
+                            <button type="submit" class="btn btn-sm btn-success text-xs">Confirm Delivery</button>
+                        }
+                    }
+                    <a href="@Url.Action("Invoices", "Supplier")" class="btn btn-sm btn-outline-dark text-xs"><i class="bi bi-receipt me-1"></i> Manage Invoices</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: TrustChain Audit Event Log -->
+        <div class="col-span-12 lg:col-span-4 space-y-3">
+            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-shield-check text-green-600 me-1"></i> TrustChain Event Trail</h6>
+                @if (trustChainRecords.Count == 0)
+                {
+                    <p class="text-xs text-gray-400">No TrustChain records registered for this order yet.</p>
+                }
+                else
+                {
+                    <div class="space-y-2">
+                        @foreach (var tc in trustChainRecords)
+                        {
+                            <div class="p-2 bg-gray-50 rounded border border-gray-200 text-[10px]">
+                                <div class="flex justify-between font-bold text-gray-800">
+                                    <span>@tc.EventType</span>
+                                    <span class="text-green-700">@tc.VerificationStatus</span>
+                                </div>
+                                <p class="text-gray-500 my-0.5">Date: @(tc.VerificationDate.HasValue ? tc.VerificationDate.Value.ToString("dd MMM yyyy, HH:mm") : tc.CreatedAt.ToString("dd MMM yyyy, HH:mm"))</p>
+                                <div class="font-mono text-[8px] text-gray-400 truncate" title="@tc.Hash">
+                                    Hash: @tc.Hash
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

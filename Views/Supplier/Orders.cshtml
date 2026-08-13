@@ -1,0 +1,170 @@
+@model System.Collections.Generic.List<LoopFlow.Models.PurchaseOrder>
+@{
+    ViewBag.Title = "My Purchase Orders";
+    Layout = "~/Views/Shared/_Layout_Supplier.cshtml";
+    var activeSupplier = ViewBag.ActiveSupplier as LoopFlow.Models.Supplier;
+}
+
+<div class="px-2 py-1">
+    <div class="flex items-center justify-between mb-3">
+        <div>
+            <h1 class="text-base font-bold text-gray-900">Purchase Orders / My Orders</h1>
+            <p class="text-xs text-gray-500">
+                Manage the complete lifecycle of supplier purchase orders from reception, inventory confirmation, fulfilment, dispatch to delivery.
+            </p>
+        </div>
+        <div>
+            <span class="badge bg-blue-100 text-blue-800 font-bold text-[10px] px-2.5 py-1">
+                @Model.Count Total Order(s)
+            </span>
+        </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm mb-3">
+        <form method="get" action="@Url.Action("Orders", "Supplier")" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.SearchTerm" class="form-control bg-light border-start-0 text-xs" placeholder="Search order #, invoice, merchant..." />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm bg-light text-xs">
+                    <option value="">All Fulfilment Statuses</option>
+                    <option value="Order Received" @(ViewBag.SelectedStatus == "Order Received" ? "selected" : "")>Order Received</option>
+                    <option value="Accepted" @(ViewBag.SelectedStatus == "Accepted" ? "selected" : "")>Accepted</option>
+                    <option value="Inventory Confirmed" @(ViewBag.SelectedStatus == "Inventory Confirmed" ? "selected" : "")>Inventory Confirmed</option>
+                    <option value="Dispatched" @(ViewBag.SelectedStatus == "Dispatched" ? "selected" : "")>Dispatched</option>
+                    <option value="Delivered" @(ViewBag.SelectedStatus == "Delivered" ? "selected" : "")>Delivered</option>
+                    <option value="Completed" @(ViewBag.SelectedStatus == "Completed" ? "selected" : "")>Completed</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="merchantName" value="@ViewBag.SelectedMerchant" class="form-control form-control-sm bg-light text-xs" placeholder="Filter by Merchant..." />
+            </div>
+            <div class="col-md-2 flex gap-1">
+                <button type="submit" class="btn btn-sm btn-dark text-xs flex-1"><i class="bi bi-filter"></i> Filter</button>
+                <a href="@Url.Action("Orders", "Supplier")" class="btn btn-sm btn-outline-secondary text-xs">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        @if (Model.Count == 0)
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-box-seam text-gray-300 text-4xl block mb-2"></i>
+                <p class="text-xs font-semibold text-gray-600">No purchase orders found</p>
+                <span class="text-[10px] text-gray-400">Purchases initiated by merchants will be tracked here.</span>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-xs">
+                    <thead class="table-light text-[10px] text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th>Order Number</th>
+                            <th>Merchant</th>
+                            <th>Items & Supplier Share</th>
+                            <th>Required Delivery</th>
+                            <th>Verification</th>
+                            <th>Fulfilment Stage</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var po in Model)
+                        {
+                            var splits = po.SupplierSplits.Where(s => activeSupplier != null && s.SupplierId == activeSupplier.Id).ToList();
+                            decimal supplierShare = splits.Sum(s => s.Amount);
+
+                            <tr>
+                                <td>
+                                    <a href="@Url.Action("OrderDetails", "Supplier", new { id = po.Id })" class="font-bold text-gray-900 hover:text-[#ff5f00]">
+                                        @po.OrderNumber
+                                    </a>
+                                    <div class="text-[9px] text-gray-400">Date: @po.OrderDate.ToString("dd MMM yyyy")</div>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-gray-800">
+                                        @(po.Buyer?.User?.FullName ?? po.Buyer?.User?.BusinessName ?? "Merchant")
+                                    </div>
+                                    <span class="text-[9px] text-gray-400">Cat: @(po.Buyer?.BusinessCategory ?? "SME Buyer")</span>
+                                </td>
+                                <td>
+                                    <div class="font-bold text-gray-900">KES @string.Format("{0:N2}", supplierShare)</div>
+                                    <span class="text-[9px] text-gray-500">
+                                        @(splits.FirstOrDefault()?.ItemDescription ?? "Multi-supplier split item")
+                                    </span>
+                                </td>
+                                <td class="text-gray-500">
+                                    @(po.RequiredDeliveryDate.HasValue ? po.RequiredDeliveryDate.Value.ToString("dd MMM yyyy") : "Standard (7 Days)")
+                                </td>
+                                <td>
+                                    @if (po.SupplierVerificationStatus == "VERIFIED")
+                                    {
+                                        <span class="badge bg-green-100 text-green-800 text-[9px] px-2 py-1"><i class="bi bi-shield-check me-1"></i> VERIFIED</span>
+                                    }
+                                    else if (po.SupplierVerificationStatus == "REJECTED")
+                                    {
+                                        <span class="badge bg-red-100 text-red-800 text-[9px] px-2 py-1"><i class="bi bi-x-circle me-1"></i> REJECTED</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-amber-100 text-amber-800 text-[9px] px-2 py-1"><i class="bi bi-clock me-1"></i> PENDING</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border font-semibold text-[9px] px-2 py-1">
+                                        @po.FulfilmentStatus
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-1">
+                                        <a href="@Url.Action("OrderDetails", "Supplier", new { id = po.Id })" class="btn btn-sm btn-outline-dark text-[10px] py-1 px-2">
+                                            Details <i class="bi bi-arrow-right"></i>
+                                        </a>
+
+                                        @if (!po.InventoryAvailabilityConfirmed && po.SupplierVerificationStatus == "VERIFIED")
+                                        {
+                                            using (Html.BeginForm("ConfirmInventory", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                                            {
+                                                <input type="hidden" name="orderId" value="@po.Id" />
+                                                <button type="submit" class="btn btn-sm btn-info text-[10px] text-white py-1 px-2" title="Confirm inventory readiness">
+                                                    Confirm Inventory
+                                                </button>
+                                            }
+                                        }
+                                        else if (po.FulfilmentStatus == "Inventory Confirmed" || po.FulfilmentStatus == "Accepted")
+                                        {
+                                            using (Html.BeginForm("ConfirmDispatch", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                                            {
+                                                <input type="hidden" name="orderId" value="@po.Id" />
+                                                <button type="submit" class="btn btn-sm btn-primary text-[10px] py-1 px-2">
+                                                    Dispatch Order
+                                                </button>
+                                            }
+                                        }
+                                        else if (po.FulfilmentStatus == "Dispatched")
+                                        {
+                                            using (Html.BeginForm("ConfirmDelivery", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                                            {
+                                                <input type="hidden" name="orderId" value="@po.Id" />
+                                                <button type="submit" class="btn btn-sm btn-success text-[10px] py-1 px-2">
+                                                    Confirm Delivery
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

@@ -31,7 +31,7 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" href="@Url.Action("Index", "Buyer")" style="font-size: 0.85rem; font-weight: 500;">
-                                <i class="bi bi-wallet2 me-1" style="color: #ff5f00;"></i> Buyer Portal
+                                <i class="bi bi-wallet2 me-1" style="color: #ff5f00;"></i> Merchant Portal
                             </a>
                         </li>
                         <li class="nav-item">
@@ -49,13 +49,28 @@
                                 <i class="bi bi-shield-check me-1" style="color: #ff5f00;"></i> TrustChain
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" href="@Url.Action("Index", "Admin")" style="font-size: 0.85rem; font-weight: 500;">
+                                <i class="bi bi-shield-lock me-1" style="color: #dc2626;"></i> Admin Control
+                            </a>
+                        </li>
                     </ul>
 
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="text-muted small me-1 d-none d-sm-inline">Role:</span>
-                        <a href="@Url.Action("SwitchRole", "Account", new { role = "Buyer" })" class="role-btn" style="font-size: 0.75rem;">Buyer</a>
+                        <span class="text-muted small me-1 d-none d-sm-inline">Portal Role:</span>
+                        <a href="@Url.Action("SwitchRole", "Account", new { role = "Admin" })" class="role-btn text-danger border-danger" style="font-size: 0.75rem;">Admin</a>
+                        <a href="@Url.Action("SwitchRole", "Account", new { role = "Buyer" })" class="role-btn" style="font-size: 0.75rem;">Merchant</a>
                         <a href="@Url.Action("SwitchRole", "Account", new { role = "Supplier" })" class="role-btn" style="font-size: 0.75rem;">Supplier</a>
                         <a href="@Url.Action("SwitchRole", "Account", new { role = "Financier" })" class="role-btn" style="font-size: 0.75rem;">Bank</a>
+                        
+                        @if (Request.IsAuthenticated)
+                        {
+                            <a href="@Url.Action("Logout", "Account")" class="btn btn-sm btn-outline-danger ms-1" style="font-size: 0.75rem;"><i class="bi bi-box-arrow-right"></i> Sign Out</a>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("Login", "Account")" class="btn btn-sm btn-loop ms-1" style="font-size: 0.75rem;"><i class="bi bi-box-arrow-in-right"></i> Sign In</a>
+                        }
                     </div>
                 </div>
             </div>

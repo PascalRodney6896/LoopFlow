@@ -5,11 +5,6 @@ namespace LoopFlow.Models
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
-        static ApplicationDbContext()
-        {
-            Database.SetInitializer(new DbInitializer());
-        }
-
         public ApplicationDbContext()
             : base("DefaultConnection", throwIfV1Schema: false)
         {
@@ -21,13 +16,13 @@ namespace LoopFlow.Models
         }
 
         public DbSet<User> DomainUsers { get; set; }
+        public DbSet<Role> DomainRoles { get; set; }
         public DbSet<LoopAccount> LoopAccounts { get; set; }
         public DbSet<Buyer> Buyers { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<CreditLimit> CreditLimits { get; set; }
         public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
         public DbSet<SupplierSplit> SupplierSplits { get; set; }
-        public DbSet<SupplierInvoice> SupplierInvoices { get; set; }
         public DbSet<FinancingRequest> FinancingRequests { get; set; }
         public DbSet<LoanTransaction> LoanTransactions { get; set; }
         public DbSet<SettlementBatch> SettlementBatches { get; set; }
@@ -89,18 +84,6 @@ namespace LoopFlow.Models
                 .HasRequired(ss => ss.Supplier)
                 .WithMany(s => s.SupplierSplits)
                 .HasForeignKey(ss => ss.SupplierId)
-                .WillCascadeOnDelete(false);
-
-            modelBuilder.Entity<SupplierInvoice>()
-                .HasRequired(si => si.Order)
-                .WithMany(po => po.Invoices)
-                .HasForeignKey(si => si.OrderId)
-                .WillCascadeOnDelete(false);
-
-            modelBuilder.Entity<SupplierInvoice>()
-                .HasRequired(si => si.Supplier)
-                .WithMany(s => s.SupplierInvoices)
-                .HasForeignKey(si => si.SupplierId)
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<FinancingRequest>()

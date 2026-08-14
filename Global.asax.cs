@@ -14,8 +14,6 @@ namespace LoopFlow
         {
             System.Data.Entity.Database.SetInitializer(new LoopFlow.Models.DbInitializer());
 
-            System.Web.Helpers.AntiForgeryConfig.UniqueClaimTypeIdentifier = System.Security.Claims.ClaimTypes.NameIdentifier;
-
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);

@@ -15,108 +15,59 @@ namespace LoopFlow.Models
                 return;
             }
 
-            // 0. Seed Roles
-            var adminRole = new Role { Name = "Admin", Description = "System Administrator with full management access" };
-            var merchantRole = new Role { Name = "Merchant", Description = "Merchant / Buyer business account" };
-            var financierRole = new Role { Name = "Financier", Description = "Financier / Bank Underwriter account" };
-            var supplierRole = new Role { Name = "Supplier", Description = "Supplier partner account" };
-
-            context.DomainRoles.Add(adminRole);
-            context.DomainRoles.Add(merchantRole);
-            context.DomainRoles.Add(financierRole);
-            context.DomainRoles.Add(supplierRole);
-            context.SaveChanges();
-
-            // 1. Seed Initial Admin User
-            string adminSalt;
-            string adminHash = LoopFlow.Services.PasswordHasher.HashPassword("Admin@12345", out adminSalt);
-
-            var adminUser = new User
-            {
-                Username = "admin",
-                Email = "admin@loopflow.com",
-                FullName = "System Administrator",
-                PhoneNumber = "+254700112233",
-                BusinessName = "LoopFlow System Admin",
-                Role = "Admin",
-                RoleId = adminRole.Id,
-                PasswordHash = adminHash,
-                Salt = adminSalt,
-                IsActive = true,
-                IsVerified = true,
-                CreatedBy = "System",
-                MustChangePassword = false
-            };
-
-            // Seed Demo Users with Secure Hashes
-            string demoSalt;
-            string demoHash = LoopFlow.Services.PasswordHasher.HashPassword("Password123!", out demoSalt);
-
+            // 1. Seed Demo Users
             var buyerUser = new User
             {
-                Username = "wanjiku",
                 FullName = "Wanjiku Farmer Cooperative",
                 Email = "wanjiku@farmcoop.co.ke",
                 PhoneNumber = "+254712345678",
                 BusinessName = "Rift Valley Agri-Hub",
-                Role = "Merchant",
-                RoleId = merchantRole.Id,
-                PasswordHash = demoHash,
-                Salt = demoSalt,
+                Role = "Buyer",
+                PasswordHash = "DemoHash123",
+                Salt = "Salt123",
                 IsActive = true,
-                IsVerified = true,
-                CreatedBy = "System"
+                IsVerified = true
             };
 
             var supplierUser1 = new User
             {
-                Username = "kenyaseed",
                 FullName = "Kenya Seed & Fertilizer Ltd",
                 Email = "sales@kenyaseed.co.ke",
                 PhoneNumber = "+254722998877",
                 BusinessName = "Kenya Seed Corp",
                 Role = "Supplier",
-                RoleId = supplierRole.Id,
-                PasswordHash = demoHash,
-                Salt = demoSalt,
+                PasswordHash = "DemoHash123",
+                Salt = "Salt123",
                 IsActive = true,
-                IsVerified = true,
-                CreatedBy = "System"
+                IsVerified = true
             };
 
             var supplierUser2 = new User
             {
-                Username = "athichem",
                 FullName = "Athi River Chemicals Ltd",
                 Email = "orders@athichem.co.ke",
                 PhoneNumber = "+254733445566",
                 BusinessName = "Athi River Chemicals",
                 Role = "Supplier",
-                RoleId = supplierRole.Id,
-                PasswordHash = demoHash,
-                Salt = demoSalt,
+                PasswordHash = "DemoHash123",
+                Salt = "Salt123",
                 IsActive = true,
-                IsVerified = true,
-                CreatedBy = "System"
+                IsVerified = true
             };
 
             var bankUser = new User
             {
-                Username = "underwriter",
                 FullName = "LOOP SME Credit Underwriter",
                 Email = "underwriter@loop.co.ke",
                 PhoneNumber = "+254700000000",
                 BusinessName = "LOOP Bank Kenya",
                 Role = "Financier",
-                RoleId = financierRole.Id,
-                PasswordHash = demoHash,
-                Salt = demoSalt,
+                PasswordHash = "DemoHash123",
+                Salt = "Salt123",
                 IsActive = true,
-                IsVerified = true,
-                CreatedBy = "System"
+                IsVerified = true
             };
 
-            context.DomainUsers.Add(adminUser);
             context.DomainUsers.Add(buyerUser);
             context.DomainUsers.Add(supplierUser1);
             context.DomainUsers.Add(supplierUser2);
@@ -185,6 +136,14 @@ namespace LoopFlow.Models
                 BusinessRegistration = "CPR/2018/889900",
                 KRA_PIN = "P051234567A",
                 BusinessCategory = "Agri Inputs & Seeds",
+                ContactPhone = "+254722998877",
+                ContactEmail = "sales@kenyaseed.co.ke",
+                BusinessAddress = "Kenya Seed Complex, Nakuru Road, Kitale",
+                SettlementBank = "NCBA Bank Kenya",
+                SettlementAccount = "0100987654322",
+                SettlementAccountName = "Kenya Seed & Fertilizer Ltd",
+                PaymentDetails = "Paybill: 888222 | Account: SUP-001-SETTLE",
+                KYCStatus = "Verified",
                 AverageOrderValue = 300000.00m,
                 IsVerifiedSupplier = true,
                 Rating = 4.9m,
@@ -198,6 +157,14 @@ namespace LoopFlow.Models
                 BusinessRegistration = "CPR/2019/776655",
                 KRA_PIN = "P059876543B",
                 BusinessCategory = "Agri Chemicals & Fertilizer",
+                ContactPhone = "+254733445566",
+                ContactEmail = "orders@athichem.co.ke",
+                BusinessAddress = "Athi River Industrial Zone, Plot 42, Mavoko",
+                SettlementBank = "NCBA Bank Kenya",
+                SettlementAccount = "0100987654323",
+                SettlementAccountName = "Athi River Chemicals Ltd",
+                PaymentDetails = "Paybill: 888223 | Account: SUP-002-SETTLE",
+                KYCStatus = "Verified",
                 AverageOrderValue = 200000.00m,
                 IsVerifiedSupplier = true,
                 Rating = 4.7m,
@@ -245,11 +212,32 @@ namespace LoopFlow.Models
                 BuyerId = buyerProfile.Id,
                 TotalAmount = 500000.00m,
                 PaymentMethod = "LOOP_BNPL",
-                Status = "Approved",
-                OrderDate = DateTime.UtcNow.AddDays(-2)
+                Status = "Completed",
+                SupplierVerificationStatus = "VERIFIED",
+                InventoryAvailabilityConfirmed = true,
+                FulfilmentStatus = "Delivered",
+                RequiredDeliveryDate = DateTime.UtcNow.AddDays(5),
+                OrderDate = DateTime.UtcNow.AddDays(-5),
+                DispatchedAt = DateTime.UtcNow.AddDays(-3),
+                DeliveredAt = DateTime.UtcNow.AddDays(-1)
+            };
+
+            var po2 = new PurchaseOrder
+            {
+                OrderNumber = "ORD-2026-9042",
+                BuyerId = buyerProfile.Id,
+                TotalAmount = 350000.00m,
+                PaymentMethod = "LOOP_BNPL",
+                Status = "PendingSupplierApproval",
+                SupplierVerificationStatus = "PENDING_VERIFICATION",
+                InventoryAvailabilityConfirmed = false,
+                FulfilmentStatus = "Order Received",
+                RequiredDeliveryDate = DateTime.UtcNow.AddDays(7),
+                OrderDate = DateTime.UtcNow.AddDays(-1)
             };
 
             context.PurchaseOrders.Add(po1);
+            context.PurchaseOrders.Add(po2);
             context.SaveChanges();
 
             var split1 = new SupplierSplit
@@ -259,10 +247,13 @@ namespace LoopFlow.Models
                 SupplierName = "Kenya Seed & Fertilizer Ltd",
                 SupplierCode = "SUP-001",
                 Amount = 300000.00m,
-                ItemDescription = "Hybrid Maize Seed - 1,000 Bags",
+                ItemDescription = "Hybrid Maize Seed H614 - 1,000 Bags",
                 Quantity = 1000,
                 UnitPrice = 300.00m,
                 IsPaid = true,
+                PaymentStatus = "COMPLETED",
+                InvoiceNumber = "INV-KS-2026-001",
+                VerificationStatus = "VERIFIED",
                 PaymentDate = DateTime.UtcNow.AddDays(-2),
                 TransactionReference = "TXN-LOOP-DISB-9901"
             };
@@ -274,16 +265,70 @@ namespace LoopFlow.Models
                 SupplierName = "Athi River Chemicals Ltd",
                 SupplierCode = "SUP-002",
                 Amount = 200000.00m,
-                ItemDescription = "CAN Fertilizer - 500 Bags",
+                ItemDescription = "CAN Topdressing Fertilizer - 500 Bags",
                 Quantity = 500,
                 UnitPrice = 400.00m,
                 IsPaid = true,
+                PaymentStatus = "COMPLETED",
+                InvoiceNumber = "INV-ARC-2026-008",
+                VerificationStatus = "VERIFIED",
                 PaymentDate = DateTime.UtcNow.AddDays(-2),
                 TransactionReference = "TXN-LOOP-DISB-9902"
             };
 
+            var split3 = new SupplierSplit
+            {
+                OrderId = po2.Id,
+                SupplierId = supplier1Profile.Id,
+                SupplierName = "Kenya Seed & Fertilizer Ltd",
+                SupplierCode = "SUP-001",
+                Amount = 350000.00m,
+                ItemDescription = "Certified Wheat Seeds - 700 Bags",
+                Quantity = 700,
+                UnitPrice = 500.00m,
+                IsPaid = false,
+                PaymentStatus = "PENDING",
+                InvoiceNumber = "INV-KS-2026-002",
+                VerificationStatus = "PENDING_VERIFICATION"
+            };
+
             context.SupplierSplits.Add(split1);
             context.SupplierSplits.Add(split2);
+            context.SupplierSplits.Add(split3);
+
+            // Seed Supplier Invoices
+            var inv1 = new SupplierInvoice
+            {
+                InvoiceNumber = "INV-KS-2026-001",
+                OrderId = po1.Id,
+                SupplierId = supplier1Profile.Id,
+                Amount = 300000.00m,
+                Currency = "KES",
+                InvoiceDate = DateTime.UtcNow.AddDays(-4),
+                DueDate = DateTime.UtcNow.AddDays(10),
+                Status = "PAID",
+                VerificationStatus = "VERIFIED",
+                DuplicateCheckHash = "SUP-001_INV-KS-2026-001_300000.00",
+                Notes = "Standard commercial invoice for Order #ORD-2026-8801"
+            };
+
+            var inv2 = new SupplierInvoice
+            {
+                InvoiceNumber = "INV-KS-2026-002",
+                OrderId = po2.Id,
+                SupplierId = supplier1Profile.Id,
+                Amount = 350000.00m,
+                Currency = "KES",
+                InvoiceDate = DateTime.UtcNow.AddDays(-1),
+                DueDate = DateTime.UtcNow.AddDays(14),
+                Status = "PENDING_VERIFICATION",
+                VerificationStatus = "PENDING_VERIFICATION",
+                DuplicateCheckHash = "SUP-001_INV-KS-2026-002_350000.00",
+                Notes = "Pending supplier confirmation for Wheat Seed order"
+            };
+
+            context.SupplierInvoices.Add(inv1);
+            context.SupplierInvoices.Add(inv2);
 
             // 6. Seed Financing Request
             var finRequest = new FinancingRequest

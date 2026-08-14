@@ -3,9 +3,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 using LoopFlow.Models;
+using LoopFlow.Attributes;
 
 namespace LoopFlow.Controllers
 {
+    [CustomAuthorize(Roles = "Admin,Financier")]
     public class FinancierController : Controller
     {
         private readonly ApplicationDbContext _db = new ApplicationDbContext();

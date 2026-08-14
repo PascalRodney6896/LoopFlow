@@ -91,6 +91,41 @@ namespace LoopFlow.Controllers
 
             var totalAmount = amount1 + amount2;
             var poNumber = "ORD-2026-" + new Random().Next(1000, 9999);
+            string financingStatus = "FACILITY_RESERVED";
+            string paymentStatus = "UNPAID";
+
+            if (paymentPath == "BANK_FINANCED")
+            {
+                // Validate & Reserve Pre-approved Facility Limit
+                if (buyer.CreditLimit != null)
+                {
+                    decimal availCredit = buyer.CreditLimit.TotalCreditLimit - buyer.CreditLimit.UsedCredit;
+                    if (totalAmount > availCredit)
+                    {
+                        TempData["ErrorMessage"] = "Order creation blocked: Order total (KES " + totalAmount.ToString("N0") + ") exceeds your available credit line balance of KES " + availCredit.ToString("N0") + ". Please reduce quantity or choose direct cash payment.";
+                        return RedirectToAction("CreateRequest");
+                    }
+                    buyer.CreditLimit.UsedCredit += totalAmount;
+                    buyer.CreditLimit.AvailableCredit = Math.Max(0m, buyer.CreditLimit.TotalCreditLimit - buyer.CreditLimit.UsedCredit);
+                }
+                financingStatus = "FACILITY_RESERVED";
+                paymentStatus = "UNPAID";
+            }
+            else if (paymentPath == "MERCHANT_FUNDED")
+            {
+                // Validate & Deduct from Merchant Own Funds (Wallet/Account)
+                var wallet = await _db.LoopAccounts.FirstOrDefaultAsync(w => w.UserId == buyer.UserId);
+                if (wallet != null && wallet.WalletBalance >= totalAmount)
+                {
+                    wallet.WalletBalance -= totalAmount;
+                }
+                else if (wallet != null && wallet.AccountBalance >= totalAmount)
+                {
+                    wallet.AccountBalance -= totalAmount;
+                }
+                financingStatus = "NOT_REQUIRED";
+                paymentStatus = "PAID";
+            }
 
             var po = new PurchaseOrder
             {
@@ -168,6 +203,20 @@ namespace LoopFlow.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        // GET: Buyer/Reports
+        public async Task<ActionResult> Reports()
+        {
+            var buyer = await _db.Buyers
+                .Include(b => b.User)
+                .Include(b => b.CreditLimit)
+                .Include(b => b.PurchaseOrders)
+                .Include(b => b.LoanTransactions)
+                .FirstOrDefaultAsync();
+
+            ViewBag.Wallet = await _db.LoopAccounts.FirstOrDefaultAsync(a => a.UserId == (buyer != null ? buyer.UserId : 1));
+            return View(buyer);
         }
 
         protected override void Dispose(bool disposing)

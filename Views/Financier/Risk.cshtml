@@ -1,0 +1,110 @@
+@model System.Collections.Generic.List<LoopFlow.Models.Buyer>
+@{
+    ViewBag.Title = "Risk Reports & NPL Staging";
+    Layout = "~/Views/Shared/_Layout_Financier.cshtml";
+
+    var highRisk = Model.Where(b => b.CreditScore < 60).ToList();
+    var mediumRisk = Model.Where(b => b.CreditScore >= 60 && b.CreditScore < 80).ToList();
+    var lowRisk = Model.Where(b => b.CreditScore >= 80).ToList();
+
+    decimal totalUtilized = Model.Sum(b => b.CreditLimit?.UsedCredit ?? 0);
+    decimal totalLimit = Model.Sum(b => b.CreditLimit?.TotalCreditLimit ?? 0);
+}
+
+<div class="px-4 py-3 financier-dashboard space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+            <h1 class="text-base font-bold text-gray-900 my-0">Risk Reports & NPL Staging</h1>
+            <p class="text-xs text-gray-500 my-0.5">Credit risk underwriting analytics, exposure limits, score staging, and non-performing loan monitoring.</p>
+        </div>
+        <a href="@Url.Action("Index", "Financier")" class="btn btn-sm btn-outline-secondary text-xs">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Risk Summary KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="stat-card border-l-4 border-l-green-500">
+            <p class="stat-label">Low Risk Tier (Score 80-100)</p>
+            <p class="stat-number text-green-700">@lowRisk.Count</p>
+            <span class="text-[9px] text-gray-400">Prime Merchant Category</span>
+        </div>
+        <div class="stat-card border-l-4 border-l-amber-500">
+            <p class="stat-label">Medium Risk Tier (Score 60-79)</p>
+            <p class="stat-number text-amber-700">@mediumRisk.Count</p>
+            <span class="text-[9px] text-gray-400">Standard Category</span>
+        </div>
+        <div class="stat-card border-l-4 border-l-red-500">
+            <p class="stat-label">High Risk Tier (Score < 60)</p>
+            <p class="stat-number text-red-700">@highRisk.Count</p>
+            <span class="text-[9px] text-red-600 font-bold">Watchlist Category</span>
+        </div>
+        <div class="stat-card border-l-4 border-l-purple-500">
+            <p class="stat-label">Portfolio Risk Utilization</p>
+            <p class="stat-number text-purple-700">@(totalLimit > 0 ? (totalUtilized / totalLimit * 100).ToString("F1") : "0")%</p>
+            <span class="text-[9px] text-gray-400">Exposure vs Max Line</span>
+        </div>
+    </div>
+
+    <!-- Merchant Risk Distribution Table Card -->
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+        <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider my-0">
+            <i class="bi bi-shield-exclamation me-1" style="color: #ff5f00;"></i> Merchant Risk Underwriting Staging
+        </h4>
+
+        <div class="table-wrapper">
+            <table class="portfolio-table text-xs">
+                <thead>
+                    <tr>
+                        <th>Merchant Name</th>
+                        <th>Buyer Code</th>
+                        <th>Risk Score Staging</th>
+                        <th>Risk Category</th>
+                        <th>Approved Limit</th>
+                        <th>Utilised Balance</th>
+                        <th>Daily Sweep %</th>
+                        <th>Underwriting Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in Model.OrderBy(x => x.CreditScore))
+                    {
+                        var score = b.CreditScore;
+                        var scoreClass = score >= 80 ? "high" : score >= 60 ? "medium" : "low";
+                        var catText = score >= 80 ? "Tier 1 - Low Risk" : score >= 60 ? "Tier 2 - Medium Risk" : "Tier 3 - High Risk Watchlist";
+                        var cl = b.CreditLimit;
+
+                        <tr>
+                            <td class="font-bold text-gray-900 py-2">@(b.User != null ? b.User.FullName : "Merchant")</td>
+                            <td class="font-mono text-gray-500 text-[10px]">@b.BuyerCode</td>
+                            <td>
+                                <span class="credit-score @scoreClass">Score: @score/100</span>
+                            </td>
+                            <td class="font-semibold text-gray-700 text-[11px]">@catText</td>
+                            <td class="font-bold text-blue-700 font-mono">KES @string.Format("{0:N0}", cl?.TotalCreditLimit ?? 500000m)</td>
+                            <td class="font-bold text-amber-700 font-mono">KES @string.Format("{0:N0}", cl?.UsedCredit ?? 0m)</td>
+                            <td class="font-semibold text-green-700">30.0% Daily Sweep</td>
+                            <td>
+                                @if (score < 60)
+                                {
+                                    <span class="badge bg-red-100 text-red-800 text-[9px] font-bold">RE-EVALUATE LINE</span>
+                                }
+                                else if (score < 80)
+                                {
+                                    <span class="badge bg-amber-100 text-amber-800 text-[9px]">MONITOR SWEEPS</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-green-100 text-green-800 text-[9px]">ELIGIBLE FOR INCREASE</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

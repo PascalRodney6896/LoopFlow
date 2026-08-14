@@ -1,0 +1,101 @@
+@{
+    ViewBag.Title = "Supplier Reports & Settlement Statements";
+    Layout = "~/Views/Shared/_Layout_Supplier.cshtml";
+
+    var invoices = ViewBag.Invoices as System.Collections.Generic.List<LoopFlow.Models.SupplierInvoice> ?? new System.Collections.Generic.List<LoopFlow.Models.SupplierInvoice>();
+    var splits = ViewBag.Splits as System.Collections.Generic.List<LoopFlow.Models.SupplierSplit> ?? new System.Collections.Generic.List<LoopFlow.Models.SupplierSplit>();
+    var supplier = ViewBag.ActiveSupplier as LoopFlow.Models.Supplier;
+}
+
+<div class="px-4 py-3 space-y-4">
+
+    <!-- Header & Export Toolbar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-base font-bold text-gray-900 my-0">Supplier Trade Reports & Settlement Payout Statements</h1>
+                <span class="badge bg-green-100 text-green-800 text-[10px] px-2 py-0.5 font-bold border border-green-200">Verified Payouts</span>
+            </div>
+            <p class="text-xs text-gray-500 my-0.5">Comprehensive audit statements for auto-generated invoices, Bank Escrow holdings, and disbursement payouts.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="window.print()" class="btn btn-sm btn-outline-dark text-xs px-3 py-1.5 rounded-lg font-bold">
+                <i class="bi bi-printer me-1"></i> Print Statement
+            </button>
+            <button onclick="alert('Exporting Supplier Statement to CSV/Excel...')" class="btn btn-sm bg-[#ff5f00] text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- SUMMARY KPI CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+            <span class="text-[9px] text-gray-400 font-bold uppercase block">Total Generated Invoices</span>
+            <strong class="text-base font-mono text-gray-900">@invoices.Count() Invoices</strong>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+            <span class="text-[9px] text-gray-400 font-bold uppercase block">Cumulative Invoiced Value</span>
+            <strong class="text-base font-mono text-blue-700">KES @string.Format("{0:N0}", invoices.Sum(i => i.Amount))</strong>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+            <span class="text-[9px] text-gray-400 font-bold uppercase block">Bank Escrow Disbursed</span>
+            <strong class="text-base font-mono text-emerald-700">KES @string.Format("{0:N0}", splits.Where(s => s.IsPaid || s.PaymentStatus == "Completed").Sum(s => s.Amount))</strong>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+            <span class="text-[9px] text-gray-400 font-bold uppercase block">Pending Settlement</span>
+            <strong class="text-base font-mono text-amber-700">KES @string.Format("{0:N0}", splits.Where(s => !s.IsPaid && s.PaymentStatus != "Completed").Sum(s => s.Amount))</strong>
+        </div>
+    </div>
+
+    <!-- INVOICE & SETTLEMENT PAYOUT LEDGER TABLE -->
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between border-b pb-2">
+            <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider my-0">
+                <i class="bi bi-file-earmark-text me-1.5" style="color: #ff5f00;"></i> Invoices & Bank Escrow Settlement Ledger
+            </h3>
+            <span class="badge bg-blue-100 text-blue-800 text-[10px]">Bank Escrow Verified</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm text-xs mb-0">
+                <thead>
+                    <tr class="text-gray-500">
+                        <th>Invoice Number</th>
+                        <th>Order Reference</th>
+                        <th>Invoice Amount</th>
+                        <th>Invoice Date</th>
+                        <th>Validation Status</th>
+                        <th>Bank Escrow Status</th>
+                        <th>Payout Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (invoices.Any())
+                    {
+                        foreach (var inv in invoices)
+                        {
+                            <tr>
+                                <td class="font-mono font-bold text-gray-900">@inv.InvoiceNumber</td>
+                                <td class="font-mono text-gray-700">@(inv.Order != null ? inv.Order.OrderNumber : "PO-REF")</td>
+                                <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", inv.Amount)</td>
+                                <td class="text-gray-500 font-mono text-[10px]">@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                <td><span class="badge bg-green-100 text-green-800 text-[9px]">@(inv.VerificationStatus ?? "VERIFIED")</span></td>
+                                <td><span class="badge bg-blue-100 text-blue-800 text-[9px]">@inv.Status</span></td>
+                                <td><code class="text-[9px] text-gray-600">@(inv.Order != null ? "PAY-" + inv.Order.OrderNumber : "PAY-REF")</code></td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-gray-500 py-3 text-xs">No supplier invoice statements found.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

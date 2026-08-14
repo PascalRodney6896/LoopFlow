@@ -1,0 +1,270 @@
+@{
+    ViewBag.Title = "Bank Executive Reports & Analytics";
+    Layout = "~/Views/Shared/_Layout_Financier.cshtml";
+
+    var buyers = ViewBag.Buyers as System.Collections.Generic.List<LoopFlow.Models.Buyer> ?? new System.Collections.Generic.List<LoopFlow.Models.Buyer>();
+    var orders = ViewBag.Orders as System.Collections.Generic.List<LoopFlow.Models.PurchaseOrder> ?? new System.Collections.Generic.List<LoopFlow.Models.PurchaseOrder>();
+    var loans = ViewBag.Loans as System.Collections.Generic.List<LoopFlow.Models.LoanTransaction> ?? new System.Collections.Generic.List<LoopFlow.Models.LoanTransaction>();
+    var suspenseAccount = ViewBag.SuspenseAccount as LoopFlow.Models.BankSuspenseAccount ?? new LoopFlow.Models.BankSuspenseAccount();
+    var suspenseEntries = ViewBag.SuspenseLedgerEntries as System.Collections.Generic.List<LoopFlow.Models.BankSuspenseLedgerEntry> ?? new System.Collections.Generic.List<LoopFlow.Models.BankSuspenseLedgerEntry>();
+}
+
+<div class="px-4 py-3 financier-dashboard space-y-4">
+
+    <!-- Header & Export Toolbar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-base font-bold text-gray-900 my-0">Bank Financier Executive Reports & Audit Statements</h1>
+                <span class="badge bg-orange-100 text-[#ff5f00] text-[10px] px-2 py-0.5 font-bold border border-orange-200">Management Analytics</span>
+            </div>
+            <p class="text-xs text-gray-500 my-0.5">Comprehensive audit statements covering credit exposure, loan underwriting, suspense holding ledgers, and 30% sales sweep collections.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="window.print()" class="btn btn-sm btn-outline-dark text-xs px-3 py-1.5 rounded-lg font-bold">
+                <i class="bi bi-printer me-1"></i> Print Statement
+            </button>
+            <button onclick="alert('Exporting Report Statement to CSV/Excel...')" class="btn btn-sm bg-[#ff5f00] text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- REPORT SELECTION TABS -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-4">
+
+        <ul class="nav nav-tabs border-b border-gray-200" id="reportTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active text-xs font-bold py-2 px-3" id="suspense-report-tab" data-bs-toggle="tab" data-bs-target="#suspense-report-pane" type="button" role="tab">
+                    <i class="bi bi-bank me-1" style="color: #ff5f00;"></i> 1. Suspense Account & Bucket Separation Report
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="portfolio-report-tab" data-bs-toggle="tab" data-bs-target="#portfolio-report-pane" type="button" role="tab">
+                    <i class="bi bi-pie-chart-fill me-1" style="color: #ff5f00;"></i> 2. Portfolio Exposure & Utilization Report
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="loans-report-tab" data-bs-toggle="tab" data-bs-target="#loans-report-pane" type="button" role="tab">
+                    <i class="bi bi-journal-text me-1" style="color: #ff5f00;"></i> 3. Underwriting & Disbursement Pipeline
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="sweeps-report-tab" data-bs-toggle="tab" data-bs-target="#sweeps-report-pane" type="button" role="tab">
+                    <i class="bi bi-arrow-repeat me-1" style="color: #ff5f00;"></i> 4. 30% Sales Sweep Repayment Report
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="reportTabsContent">
+
+            <!-- 1. BANK SUSPENSE ACCOUNT & BUCKET SEPARATION REPORT -->
+            <div class="tab-pane fade show active" id="suspense-report-pane" role="tabpanel">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between border-b pb-2">
+                        <h4 class="text-xs font-bold text-gray-900 my-0 uppercase tracking-wider">
+                            Bank Suspense Account Sub-Ledger Statement (Separated Buckets)
+                        </h4>
+                        <span class="text-[10px] text-gray-500 font-mono">Generated: @DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm UTC")</span>
+                    </div>
+
+                    <!-- Clean Sub-Ledger Bucket Breakdown -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Bucket 1: Supplier Disbursement Escrow -->
+                        <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-200 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <h5 class="text-xs font-bold text-blue-900 my-0">Bucket A: Supplier Disbursement Escrow</h5>
+                                <span class="badge bg-blue-100 text-blue-800 text-[9px] font-bold">Escrow Holding</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-gray-500 text-[9px] block">Current Holding Balance</span>
+                                    <strong class="font-mono text-blue-700 text-sm">KES @string.Format("{0:N0}", suspenseAccount.SupplierDisbursementBalance)</strong>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 text-[9px] block">Total Disbursed to Suppliers</span>
+                                    <strong class="font-mono text-emerald-700 text-sm">KES @string.Format("{0:N0}", suspenseAccount.TotalDisbursedToSuppliers)</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bucket 2: Merchant Loan Repayments & Sweeps -->
+                        <div class="p-3 bg-amber-50/50 rounded-xl border border-amber-200 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <h5 class="text-xs font-bold text-amber-900 my-0">Bucket B: Merchant Repayment Collections</h5>
+                                <span class="badge bg-amber-100 text-amber-800 text-[9px] font-bold">Repayment Collection</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-gray-500 text-[9px] block">Current Collection Balance</span>
+                                    <strong class="font-mono text-amber-700 text-sm">KES @string.Format("{0:N0}", suspenseAccount.MerchantRepaymentCollectionBalance)</strong>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 text-[9px] block">Total Sweeps Collected</span>
+                                    <strong class="font-mono text-gray-900 text-sm">KES @string.Format("{0:N0}", suspenseAccount.TotalMerchantRepaymentsCollected)</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Entries Audit Table -->
+                    <div class="table-wrapper">
+                        <table class="portfolio-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th>Ref ID</th>
+                                    <th>Timestamp</th>
+                                    <th>Bucket Category</th>
+                                    <th>Merchant</th>
+                                    <th>Supplier</th>
+                                    <th>Entry</th>
+                                    <th>Amount</th>
+                                    <th>Source &rarr; Destination Account</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in suspenseEntries)
+                                {
+                                    <tr>
+                                        <td class="font-mono font-bold text-gray-900 py-2">@entry.TransactionReference</td>
+                                        <td class="text-gray-500 font-mono text-[10px]">@entry.CreatedAt.ToString("dd/MM/yy HH:mm")</td>
+                                        <td>
+                                            <span class="badge @(entry.BucketType == "MERCHANT_REPAYMENT_COLLECTION" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800") text-[9px]">
+                                                @(entry.BucketType == "MERCHANT_REPAYMENT_COLLECTION" ? "REPAYMENT COLLECTION" : "DISBURSEMENT ESCROW")
+                                            </span>
+                                        </td>
+                                        <td class="font-semibold text-gray-800">@(entry.Buyer?.User != null ? entry.Buyer.User.FullName : "Merchant")</td>
+                                        <td class="text-gray-600">@(entry.Supplier?.User != null ? entry.Supplier.User.FullName : "Supplier")</td>
+                                        <td><span class="badge @(entry.EntryType == "Credit" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800") text-[9px]">@entry.EntryType</span></td>
+                                        <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", entry.Amount)</td>
+                                        <td class="text-gray-500 font-mono text-[9px]">@entry.SourceAccount &rarr; @entry.DestinationAccount</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. PORTFOLIO EXPOSURE & UTILIZATION REPORT -->
+            <div class="tab-pane fade" id="portfolio-report-pane" role="tabpanel">
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-gray-900 my-0 uppercase tracking-wider">Merchant Portfolio Exposure & Facility Limits</h4>
+                    <div class="table-wrapper">
+                        <table class="portfolio-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th>Merchant Name</th>
+                                    <th>Business Category</th>
+                                    <th>Approved Facility Line</th>
+                                    <th>Utilised Exposure</th>
+                                    <th>Available Balance</th>
+                                    <th>Utilization %</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var b in buyers)
+                                {
+                                    var tot = b.CreditLimit?.TotalCreditLimit ?? 0m;
+                                    var usd = b.CreditLimit?.UsedCredit ?? 0m;
+                                    var avl = b.CreditLimit?.AvailableCredit ?? (tot - usd);
+                                    var pct = tot > 0 ? (usd / tot * 100) : 0m;
+
+                                    <tr>
+                                        <td class="font-bold text-gray-900 py-2">@(b.User != null ? b.User.FullName : "Merchant")</td>
+                                        <td class="text-gray-600">@b.BusinessCategory</td>
+                                        <td class="font-bold text-blue-700 font-mono">KES @string.Format("{0:N0}", tot)</td>
+                                        <td class="font-bold text-amber-700 font-mono">KES @string.Format("{0:N0}", usd)</td>
+                                        <td class="font-bold text-emerald-700 font-mono">KES @string.Format("{0:N0}", avl)</td>
+                                        <td class="font-semibold text-gray-800">@pct.ToString("F1")%</td>
+                                        <td><span class="badge bg-green-100 text-green-800 text-[9px]">ACTIVE</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. UNDERWRITING & DISBURSEMENT PIPELINE -->
+            <div class="tab-pane fade" id="loans-report-pane" role="tabpanel">
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-gray-900 my-0 uppercase tracking-wider">Loan Applications & Underwriting Pipeline Summary</h4>
+                    <div class="table-wrapper">
+                        <table class="portfolio-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th>PO Reference</th>
+                                    <th>Merchant</th>
+                                    <th>Supplier</th>
+                                    <th>Amount</th>
+                                    <th>Financing Status</th>
+                                    <th>Order Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var po in orders)
+                                {
+                                    var mName = po.Buyer?.User != null ? po.Buyer.User.FullName : "Merchant";
+                                    var sName = po.SupplierSplits?.FirstOrDefault()?.SupplierName ?? "Supplier";
+
+                                    <tr>
+                                        <td class="font-mono font-bold text-gray-900 py-2">@po.OrderNumber</td>
+                                        <td class="font-semibold text-gray-800">@mName</td>
+                                        <td class="text-gray-600">@sName</td>
+                                        <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", po.TotalAmount)</td>
+                                        <td><span class="badge bg-blue-100 text-blue-800 text-[9px]">@(po.FinancingStatus ?? "FACILITY_RESERVED")</span></td>
+                                        <td class="text-gray-500 font-mono text-[10px]">@po.OrderDate.ToString("dd/MM/yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 30% SALES SWEEP REPAYMENT REPORT -->
+            <div class="tab-pane fade" id="sweeps-report-pane" role="tabpanel">
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-gray-900 my-0 uppercase tracking-wider">Daily 30% Sales Sweep Repayments Ledger</h4>
+                    <div class="table-wrapper">
+                        <table class="portfolio-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th>Txn Ref</th>
+                                    <th>Merchant</th>
+                                    <th>Type</th>
+                                    <th>Repayment Amount</th>
+                                    <th>Balance Before</th>
+                                    <th>Balance After</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var l in loans)
+                                {
+                                    var mName = l.Buyer?.User != null ? l.Buyer.User.FullName : "Merchant";
+
+                                    <tr>
+                                        <td class="font-mono font-bold text-gray-900 py-2">@l.TransactionReference</td>
+                                        <td class="font-semibold text-gray-800">@mName</td>
+                                        <td><span class="badge bg-green-100 text-green-800 text-[9px]">@l.TransactionType</span></td>
+                                        <td class="font-bold text-green-700 font-mono">KES @string.Format("{0:N0}", l.Amount)</td>
+                                        <td class="font-mono text-gray-500">KES @string.Format("{0:N0}", l.BalanceBefore)</td>
+                                        <td class="font-mono text-gray-900 font-bold">KES @string.Format("{0:N0}", l.BalanceAfter)</td>
+                                        <td class="text-gray-500 font-mono text-[10px]">@l.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

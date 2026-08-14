@@ -197,7 +197,7 @@
                             <option value="">-- Choose Order --</option>
                             @foreach (var po in eligibleOrders)
                             {
-                                <option value="@po.Id">Order #@po.OrderNumber — @(po.Buyer?.User?.FullName) (Total KES @po.TotalAmount.ToString("N0"))</option>
+                                <option value="@po.Id">Order #@po.OrderNumber - @(po.Buyer?.User?.FullName) (Total KES @po.TotalAmount.ToString("N0"))</option>
                             }
                         </select>
                     </div>

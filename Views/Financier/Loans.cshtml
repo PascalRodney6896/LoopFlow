@@ -1,0 +1,319 @@
+@model System.Collections.Generic.List<LoopFlow.Models.FinancingRequest>
+@{
+    ViewBag.Title = "Financing Applications & Loan Processing";
+    Layout = "~/Views/Shared/_Layout_Financier.cshtml";
+
+    int pendingCount = ViewBag.PendingApprovalCount ?? 0;
+    int approvedCount = ViewBag.ApprovedCount ?? 0;
+    int disbursedCount = ViewBag.DisbursedCount ?? 0;
+    int rejectedCount = ViewBag.RejectedCount ?? 0;
+}
+
+<div class="px-4 py-3 financier-dashboard space-y-4">
+
+    <!-- Page Header & Filters -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-base font-bold text-gray-900 my-0">Bank Financing Applications & Underwriting</h1>
+                <span class="badge bg-orange-100 text-[#ff5f00] text-[10px] px-2 py-0.5 font-bold border border-orange-200">Central Operational View</span>
+            </div>
+            <p class="text-xs text-gray-500 my-0.5">Central management view for all financing applications generated from supplier-accepted, bank-financed orders.</p>
+        </div>
+
+        <!-- Filter Form -->
+        @using (Html.BeginForm("Loans", "Financier", FormMethod.Get, new { @class = "flex flex-wrap items-center gap-2" }))
+        {
+            <input type="text" name="search" value="@ViewBag.SearchTerm" placeholder="Search Merchant, Supplier, PO, Invoice..." class="form-control form-control-sm text-xs w-48 rounded-lg border-gray-300" />
+            <select name="statusFilter" class="form-select form-select-sm text-xs w-40 rounded-lg border-gray-300">
+                <option value="">All Application Statuses</option>
+                <option value="SubmittedToBank" @(ViewBag.StatusFilter == "SubmittedToBank" ? "selected" : "")>Pending Bank Approval</option>
+                <option value="Approved" @(ViewBag.StatusFilter == "Approved" ? "selected" : "")>Approved</option>
+                <option value="Disbursed" @(ViewBag.StatusFilter == "Disbursed" ? "selected" : "")>Disbursed</option>
+                <option value="Rejected" @(ViewBag.StatusFilter == "Rejected" ? "selected" : "")>Rejected</option>
+            </select>
+            <button type="submit" class="btn btn-sm bg-[#ff5f00] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-orange-600 shadow-sm">
+                <i class="bi bi-filter me-1"></i> Filter
+            </button>
+            <a href="@Url.Action("Loans", "Financier")" class="btn btn-sm btn-light border text-xs px-2.5 py-1.5 rounded-lg text-gray-600">
+                Reset
+            </a>
+        }
+    </div>
+
+    <!-- SUMMARY STATUS CARDS (4 Stepper Badges) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- 1. Pending Bank Approval -->
+        <a href="@Url.Action("Loans", "Financier", new { statusFilter = "SubmittedToBank" })" class="stat-card border-l-4 border-l-amber-500 hover:shadow-md transition no-underline">
+            <p class="stat-label">Pending Bank Approval</p>
+            <p class="stat-number text-amber-700 text-sm md:text-base">@pendingCount Applications</p>
+            <span class="text-[9px] text-amber-600 font-semibold block mt-1"><i class="bi bi-clock-history me-1"></i> Action Required</span>
+        </a>
+
+        <!-- 2. Approved -->
+        <a href="@Url.Action("Loans", "Financier", new { statusFilter = "Approved" })" class="stat-card border-l-4 border-l-blue-500 hover:shadow-md transition no-underline">
+            <p class="stat-label">Underwriting Approved</p>
+            <p class="stat-number text-blue-700 text-sm md:text-base">@approvedCount Applications</p>
+            <span class="text-[9px] text-blue-600 font-semibold block mt-1"><i class="bi bi-check-circle me-1"></i> Pending Disbursement</span>
+        </a>
+
+        <!-- 3. Disbursed -->
+        <a href="@Url.Action("Loans", "Financier", new { statusFilter = "Disbursed" })" class="stat-card border-l-4 border-l-emerald-500 hover:shadow-md transition no-underline">
+            <p class="stat-label">Facility Disbursed</p>
+            <p class="stat-number text-emerald-700 text-sm md:text-base">@disbursedCount Applications</p>
+            <span class="text-[9px] text-emerald-600 font-semibold block mt-1"><i class="bi bi-cash-stack me-1"></i> Dispatch Unlocked</span>
+        </a>
+
+        <!-- 4. Rejected -->
+        <a href="@Url.Action("Loans", "Financier", new { statusFilter = "Rejected" })" class="stat-card border-l-4 border-l-red-500 hover:shadow-md transition no-underline">
+            <p class="stat-label">Rejected Applications</p>
+            <p class="stat-number text-red-700 text-sm md:text-base">@rejectedCount Applications</p>
+            <span class="text-[9px] text-red-600 font-semibold block mt-1"><i class="bi bi-x-circle me-1"></i> Line Restored</span>
+        </a>
+    </div>
+
+    <!-- MAIN FINANCING APPLICATIONS TABLE -->
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider my-0">
+                    <i class="bi bi-wallet2 me-1.5" style="color: #ff5f00;"></i> Bank Loan Applications Ledger
+                </h3>
+                <p class="text-[10px] text-gray-500 my-0">Supplier-accepted orders auto-posted for bank loan underwriting & disbursement</p>
+            </div>
+            <span class="badge bg-green-100 text-green-800 text-[10px]">Real-Time Sync</span>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="portfolio-table text-xs">
+                <thead>
+                    <tr>
+                        <th>App Ref</th>
+                        <th>Merchant Name</th>
+                        <th>Supplier</th>
+                        <th>Order ID / Invoice ID</th>
+                        <th>Financing Amount</th>
+                        <th>Facility Line</th>
+                        <th>Application Date</th>
+                        <th>Financing Status</th>
+                        <th>Underwriting Actions / Drill Down</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Any())
+                    {
+                        foreach (var app in Model)
+                        {
+                            var po = app.Order;
+                            var merchantName = po?.Buyer?.User != null ? po.Buyer.User.FullName : (app.Buyer?.User != null ? app.Buyer.User.FullName : "Merchant");
+                            var supplierName = po?.SupplierSplits?.FirstOrDefault()?.SupplierName ?? "Supplier Counterparty";
+                            var invNumber = po?.Invoices?.FirstOrDefault()?.InvoiceNumber ?? "Auto-Generated";
+
+                            var isPending = app.Status == "SubmittedToBank" || app.Status == "Pending" || app.Status == "UtilisationRequested" || app.Status == "FacilityReserved" || po?.FinancingStatus == "SUBMITTED_TO_BANK" || po?.FinancingStatus == "FACILITY_RESERVED";
+                            var isApproved = app.Status == "Approved" || po?.FinancingStatus == "BANK_APPROVED";
+                            var isDisbursed = app.Status == "Disbursed" || po?.FinancingStatus == "DISBURSED";
+                            var isRejected = app.Status == "Rejected" || po?.FinancingStatus == "REJECTED";
+
+                            <tr>
+                                <td class="font-mono font-bold text-gray-900 py-2">FIN-APP-#@app.Id</td>
+                                <td class="font-semibold text-gray-800">@merchantName</td>
+                                <td class="text-gray-600">@supplierName</td>
+                                <td>
+                                    <div class="font-mono font-bold text-gray-900">@(po != null ? po.OrderNumber : "PO-REF")</div>
+                                    <div class="font-mono text-[9px] text-gray-400">Inv: @invNumber</div>
+                                </td>
+                                <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", app.TotalAmount)</td>
+                                <td>
+                                    <span class="badge bg-blue-50 text-blue-800 border border-blue-200 text-[9px]">
+                                        NCBA SME Facility (KES @string.Format("{0:N0}", app.CreditLimitAtRequest))
+                                    </span>
+                                </td>
+                                <td class="text-gray-500 font-mono text-[10px]">@app.CreatedAt.ToString("dd/MM/yy HH:mm")</td>
+                                <td>
+                                    @if (isRejected)
+                                    {
+                                        <span class="badge bg-red-100 text-red-800 text-[9px] font-bold" title="@(po?.RejectionReason ?? app.Notes)">REJECTED</span>
+                                    }
+                                    else if (isDisbursed)
+                                    {
+                                        <span class="badge bg-emerald-100 text-emerald-800 text-[9px] font-bold">DISBURSED</span>
+                                    }
+                                    else if (isApproved)
+                                    {
+                                        <span class="badge bg-blue-100 text-blue-800 text-[9px] font-bold">APPROVED (PENDING DISBURSEMENT)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-amber-100 text-amber-800 text-[9px] font-bold">PENDING BANK APPROVAL</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-1">
+                                        @if (isPending && po != null)
+                                        {
+                                            using (Html.BeginForm("ApproveLoanApplication", "Financier", FormMethod.Post, new { @class = "inline" }))
+                                            {
+                                                <input type="hidden" name="id" value="@app.Id" />
+                                                <button type="submit" class="btn btn-sm btn-success text-[9px] py-0.5 px-2 font-bold rounded shadow-sm">
+                                                    <i class="bi bi-check-circle me-1"></i> Approve Loan
+                                                </button>
+                                            }
+                                        }
+                                        @if ((isApproved || isPending) && !isDisbursed && !isRejected && po != null)
+                                        {
+                                            using (Html.BeginForm("DisburseLoanApplication", "Financier", FormMethod.Post, new { @class = "inline" }))
+                                            {
+                                                <input type="hidden" name="id" value="@app.Id" />
+                                                <button type="submit" class="btn btn-sm btn-primary text-[9px] py-0.5 px-2 font-bold rounded shadow-sm">
+                                                    <i class="bi bi-cash-stack me-1"></i> Disburse Funds
+                                                </button>
+                                            }
+                                        }
+                                        @if (!isDisbursed && !isRejected && po != null)
+                                        {
+                                            <button type="button" onclick="openRejectLoanModal('@app.Id', '@(po.OrderNumber)')" class="btn btn-sm btn-outline-danger text-[9px] py-0.5 px-1.5 rounded">
+                                                Reject
+                                            </button>
+                                        }
+                                        <button type="button" onclick="showLoanLifecycleModal('FIN-APP-#@app.Id', '@merchantName', '@supplierName', '@(po?.OrderNumber)', '@invNumber', 'KES @string.Format("{0:N0}", app.TotalAmount)', '@(isDisbursed ? "Disbursed" : isApproved ? "Approved" : isRejected ? "Rejected" : "Pending Bank Approval")', '@app.CreatedAt.ToString("g")')" class="btn btn-sm btn-outline-dark text-[9px] py-0.5 px-2 rounded">
+                                            <i class="bi bi-eye me-1"></i> View Full Lifecycle
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-gray-500 py-4 text-xs">No bank financing applications match the filter criteria.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- REJECT LOAN MODAL -->
+<div class="modal fade" id="rejectLoanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-2xl border-0 shadow-2xl p-3">
+            @using (Html.BeginForm("RejectLoanApplication", "Financier", FormMethod.Post))
+            {
+                <input type="hidden" id="rejectAppId" name="id" />
+                <div class="modal-header border-b pb-2">
+                    <h5 class="modal-title font-bold text-gray-900 text-sm">Reject Financing Application</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3 space-y-2">
+                    <p class="text-xs text-gray-600 my-0">You are about to reject financing application for order <strong id="rejectOrderNo">-</strong>. This will release the reserved credit facility limit.</p>
+                    <div>
+                        <label class="form-label text-xs font-bold text-gray-700">Rejection Reason</label>
+                        <textarea name="rejectionReason" rows="3" required placeholder="Enter underwriting rejection reason..." class="form-control text-xs rounded-lg"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-t pt-2 justify-between">
+                    <button type="button" class="btn btn-sm btn-secondary text-xs" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger text-xs font-bold">Reject Application</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- FULL FINANCING LIFECYCLE AUDIT MODAL -->
+<div class="modal fade" id="loanLifecycleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-2xl border-0 shadow-2xl p-3">
+            <div class="modal-header border-b pb-2">
+                <div>
+                    <h5 class="modal-title font-bold text-gray-900 text-sm">Full Bank Financing Lifecycle Trace</h5>
+                    <p class="text-xs text-gray-500 my-0">Complete audit trail: Supplier Order Acceptance &rarr; Invoice Creation &rarr; Loan Application &rarr; Bank Approval &rarr; Disbursement &rarr; Supplier Payment &rarr; Delivery</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 space-y-3">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs">
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">App Reference</span>
+                        <strong class="font-mono text-gray-900" id="lcAppRef">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Merchant Name</span>
+                        <strong class="text-gray-900" id="lcMerchant">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Supplier Name</span>
+                        <strong class="text-gray-900" id="lcSupplier">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Financing Amount</span>
+                        <strong class="font-mono text-blue-600" id="lcAmount">-</strong>
+                    </div>
+                </div>
+
+                <!-- Step-by-step lifecycle flow chart -->
+                <div class="border rounded-xl p-3 bg-white space-y-2">
+                    <h6 class="text-xs font-bold text-gray-800 mb-2">Financing Progression Milestones</h6>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">1. Supplier Acceptance:</span>
+                            <span class="text-gray-500">Order verified & auto-invoice generated</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">2. Loan Application:</span>
+                            <span class="text-gray-500">Auto-initiated & posted to Bank Dashboard</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">3. Bank Underwriting:</span>
+                            <span class="text-gray-500" id="lcBankApprovalTrace">NCBA Bank underwriting review</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">4. Loan Disbursement:</span>
+                            <span class="text-gray-500">Facility funds disbursed & dispatch unlocked</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">5. Supplier Payment:</span>
+                            <span class="text-gray-500">Disbursement payout released on dispatch</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-t pt-2 justify-between">
+                <a href="@Url.Action("TrustChain", "Financier")" class="btn btn-sm btn-outline-dark text-xs font-bold">
+                    <i class="bi bi-link-45deg me-1"></i> View TrustChain Cryptographic Ledger
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary text-xs" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        function openRejectLoanModal(appId, orderNo) {
+            document.getElementById('rejectAppId').value = appId;
+            document.getElementById('rejectOrderNo').textContent = orderNo;
+            var modal = new bootstrap.Modal(document.getElementById('rejectLoanModal'));
+            modal.show();
+        }
+
+        function showLoanLifecycleModal(appRef, merchant, supplier, orderNo, invNo, amount, status, date) {
+            document.getElementById('lcAppRef').textContent = appRef;
+            document.getElementById('lcMerchant').textContent = merchant;
+            document.getElementById('lcSupplier').textContent = supplier;
+            document.getElementById('lcAmount').textContent = amount;
+            document.getElementById('lcBankApprovalTrace').textContent = 'Status: ' + status + ' (Applied on ' + date + ')';
+
+            var modal = new bootstrap.Modal(document.getElementById('loanLifecycleModal'));
+            modal.show();
+        }
+    </script>
+}

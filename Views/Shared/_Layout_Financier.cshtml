@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNet.Identity
+@using Microsoft.AspNet.Identity
 
 <!DOCTYPE html>
 <html lang="en">
@@ -537,8 +537,14 @@
                                 <a href="@Url.Action("Loans", "Financier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Financier" && currentAction == "Loans" ? "active" : "")">
                                     <i class="bi bi-wallet2"></i> Loans
                                 </a>
+                                <a href="@Url.Action("Suspense", "Financier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Financier" && currentAction == "Suspense" ? "active" : "")">
+                                    <i class="bi bi-bank"></i> Bank Suspense Account
+                                </a>
                                 <a href="@Url.Action("Risk", "Financier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Financier" && currentAction == "Risk" ? "active" : "")">
                                     <i class="bi bi-shield-check"></i> Risk Reports
+                                </a>
+                                <a href="@Url.Action("Reports", "Financier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Financier" && currentAction == "Reports" ? "active" : "")">
+                                    <i class="bi bi-file-earmark-bar-graph"></i> Reports & Statements
                                 </a>
                                 <a href="@Url.Action("TrustChain", "Financier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Financier" && currentAction == "TrustChain" ? "active" : "")">
                                     <i class="bi bi-link-45deg"></i> TrustChain
@@ -564,13 +570,44 @@
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <button class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 text-xs">
-                            <i class="bi bi-chat-text"></i>
-                        </button>
-                        <button class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 relative text-xs">
-                            <i class="bi bi-bell"></i>
-                            <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                        </button>
+                        @{
+                            var fnNotifs = ViewBag.Notifications as System.Collections.Generic.List<LoopFlow.Models.Notification> ?? new System.Collections.Generic.List<LoopFlow.Models.Notification>();
+                        }
+                        <!-- Dynamic Bank Notifications Dropdown -->
+                        <div class="dropdown">
+                            <button class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 relative text-xs border-0" type="button" id="financierNotifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bell"></i>
+                                @if (fnNotifs.Any())
+                                {
+                                    <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white font-bold text-[9px] flex items-center justify-center">@fnNotifs.Count</span>
+                                }
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-xl border-gray-200 p-0 w-80 rounded-xl" aria-labelledby="financierNotifDropdown">
+                                <li class="p-3 border-b bg-gray-50 flex justify-between items-center rounded-t-xl">
+                                    <strong class="text-xs text-gray-900">Bank Notifications</strong>
+                                    <span class="badge bg-orange-100 text-[#ff5f00] text-[9px]">@fnNotifs.Count Alerts</span>
+                                </li>
+                                <li class="max-h-72 overflow-y-auto divide-y">
+                                    @if (fnNotifs.Any())
+                                    {
+                                        foreach (var n in fnNotifs)
+                                        {
+                                            <a href="@(n.Link ?? "/Financier")" class="block p-2.5 hover:bg-gray-50 transition text-xs no-underline">
+                                                <div class="flex items-center justify-between mb-0.5">
+                                                    <span class="font-bold text-gray-900 text-[11px]">@n.Title</span>
+                                                    <span class="text-[9px] text-gray-400 font-mono">@n.SentAt.ToString("HH:mm")</span>
+                                                </div>
+                                                <p class="text-[10px] text-gray-600 my-0">@n.Message</p>
+                                            </a>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="p-4 text-center text-xs text-gray-400">No active bank notifications.</div>
+                                    }
+                                </li>
+                            </ul>
+                        </div>
 
                         <!-- Profile -->
                         <div class="flex items-center gap-2.5 border-l pl-3 border-gray-200">

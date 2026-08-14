@@ -1,0 +1,244 @@
+@model System.Collections.Generic.List<LoopFlow.Models.BankSuspenseLedgerEntry>
+@{
+    ViewBag.Title = "Bank Suspense Account & Ledger";
+    Layout = "~/Views/Shared/_Layout_Financier.cshtml";
+
+    var suspenseAccount = ViewBag.SuspenseAccount as LoopFlow.Models.BankSuspenseAccount ?? new LoopFlow.Models.BankSuspenseAccount();
+}
+
+<div class="px-4 py-3 financier-dashboard space-y-4">
+
+    <!-- Page Header & Actions -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-base font-bold text-gray-900 my-0">Bank Financier Suspense Account & Double-Entry Ledger</h1>
+                <span class="badge bg-orange-100 text-[#ff5f00] text-[10px] px-2 py-0.5 font-bold border border-orange-200">NCBA Holding Ledger</span>
+            </div>
+            <p class="text-xs text-gray-500 my-0.5">Controlled holding ledger for merchant obligations, facility reserves, and pending supplier disbursements.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <span class="badge bg-green-100 text-green-800 text-xs px-2.5 py-1 font-bold">
+                <i class="bi bi-shield-check me-1"></i> Balance Reconciled
+            </span>
+            <a href="@Url.Action("TrustChain", "Financier")" class="btn btn-sm btn-outline-dark text-xs px-3 py-1.5 rounded-lg font-bold">
+                <i class="bi bi-link-45deg me-1"></i> TrustChain Audit
+            </a>
+        </div>
+    </div>
+
+    <!-- TOP SUSPENSE ACCOUNT BALANCE & KPIS (6 Cards) -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <!-- 1. Total Suspense Balance -->
+        <div class="stat-card border-l-4 border-l-blue-600 bg-blue-50/40">
+            <p class="stat-label">Total Suspense Balance</p>
+            <p class="stat-number text-blue-700 text-sm md:text-base">KES @string.Format("{0:N0}", suspenseAccount.TotalBalance)</p>
+            <span class="text-[9px] text-blue-600 font-semibold block mt-1"><i class="bi bi-bank me-1"></i> Account NCBA-001</span>
+        </div>
+
+        <!-- 2. Merchant Funds Received -->
+        <div class="stat-card border-l-4 border-l-emerald-500">
+            <p class="stat-label">Merchant Funds Received</p>
+            <p class="stat-number text-emerald-700 text-sm md:text-base">KES @string.Format("{0:N0}", suspenseAccount.MerchantFundsReceived)</p>
+            <span class="text-[9px] text-gray-400 block mt-1"><i class="bi bi-arrow-down-left me-1"></i> Obligation Credits</span>
+        </div>
+
+        <!-- 3. Funds Currently Held -->
+        <div class="stat-card border-l-4 border-l-amber-500">
+            <p class="stat-label">Funds Currently Held</p>
+            <p class="stat-number text-amber-700 text-sm md:text-base">KES @string.Format("{0:N0}", suspenseAccount.FundsHeld)</p>
+            <span class="text-[9px] text-amber-600 font-semibold block mt-1"><i class="bi bi-lock-fill me-1"></i> Supplier Hold State</span>
+        </div>
+
+        <!-- 4. Pending Supplier Disbursements -->
+        <div class="stat-card border-l-4 border-l-purple-500">
+            <p class="stat-label">Pending Payouts</p>
+            <p class="stat-number text-purple-700 text-sm md:text-base">KES @string.Format("{0:N0}", suspenseAccount.PendingDisbursement)</p>
+            <span class="text-[9px] text-gray-400 block mt-1"><i class="bi bi-clock-history me-1"></i> Escrow Reserve</span>
+        </div>
+
+        <!-- 5. Total Disbursed -->
+        <div class="stat-card border-l-4 border-l-sky-500">
+            <p class="stat-label">Total Disbursed</p>
+            <p class="stat-number text-sky-700 text-sm md:text-base">KES @string.Format("{0:N0}", suspenseAccount.TotalDisbursed)</p>
+            <span class="text-[9px] text-sky-600 font-semibold block mt-1"><i class="bi bi-check-all me-1"></i> Released Payouts</span>
+        </div>
+
+        <!-- 6. Reconciled Balance -->
+        <div class="stat-card border-l-4 border-l-green-600">
+            <p class="stat-label">Reconciled Balance</p>
+            <p class="stat-number text-green-700 text-sm md:text-base">KES @string.Format("{0:N0}", suspenseAccount.ReconciledBalance)</p>
+            <span class="text-[9px] text-green-700 font-bold block mt-1"><i class="bi bi-patch-check-fill me-1"></i> Double-Entry Match</span>
+        </div>
+    </div>
+
+    <!-- DOUBLE-ENTRY SUSPENSE LEDGER TABLE -->
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider my-0">
+                    <i class="bi bi-journal-bookmark-fill me-1.5" style="color: #ff5f00;"></i> Double-Entry Suspense Ledger Transactions
+                </h3>
+                <p class="text-[10px] text-gray-500 my-0">Full audit trail of all credits, debits, holds, disbursements, and account balance updates</p>
+            </div>
+            <span class="badge bg-green-100 text-green-800 text-[10px]">Idempotent & Locked</span>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="portfolio-table text-xs">
+                <thead>
+                    <tr>
+                        <th>Txn Reference</th>
+                        <th>Timestamp</th>
+                        <th>Merchant</th>
+                        <th>Supplier</th>
+                        <th>Order / Invoice Ref</th>
+                        <th>Entry Type</th>
+                        <th>Ledger State</th>
+                        <th>Amount</th>
+                        <th>Source &rarr; Destination Account</th>
+                        <th>Opening &rarr; Closing Balance</th>
+                        <th>Reconciliation</th>
+                        <th>Audit Trace</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Any())
+                    {
+                        foreach (var entry in Model)
+                        {
+                            var mName = entry.Buyer?.User != null ? entry.Buyer.User.FullName : "Merchant";
+                            var sName = entry.Supplier?.User != null ? entry.Supplier.User.FullName : "Supplier Counterparty";
+                            var poNo = entry.Order != null ? entry.Order.OrderNumber : "PO-REF";
+                            var invNo = entry.Invoice != null ? entry.Invoice.InvoiceNumber : "INV-REF";
+
+                            <tr>
+                                <td class="font-mono font-bold text-gray-900 py-2">@entry.TransactionReference</td>
+                                <td class="text-gray-500 font-mono text-[10px]">@entry.CreatedAt.ToString("dd/MM/yy HH:mm:ss")</td>
+                                <td class="font-semibold text-gray-800">@mName</td>
+                                <td class="text-gray-600">@sName</td>
+                                <td>
+                                    <div class="font-mono font-bold text-gray-900">@poNo</div>
+                                    <div class="font-mono text-[9px] text-gray-400">@invNo</div>
+                                </td>
+                                <td>
+                                    <span class="badge @(entry.EntryType == "Credit" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800") text-[9px] font-bold">
+                                        @entry.EntryType
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-purple-100 text-purple-800 text-[9px] font-bold">@entry.LedgerState</span>
+                                </td>
+                                <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", entry.Amount)</td>
+                                <td class="text-gray-600 font-mono text-[9px]">
+                                    @entry.SourceAccount &rarr; @entry.DestinationAccount
+                                </td>
+                                <td class="font-mono text-[10px] text-gray-600">
+                                    KES @string.Format("{0:N0}", entry.OpeningBalance) &rarr; <strong class="text-gray-900">KES @string.Format("{0:N0}", entry.ClosingBalance)</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-emerald-100 text-emerald-800 text-[9px]">@entry.ReconciliationStatus</span>
+                                </td>
+                                <td>
+                                    <button type="button" onclick="showSuspenseTraceModal('@entry.TransactionReference', '@mName', '@sName', '@poNo', '@invNo', 'KES @string.Format("{0:N0}", entry.Amount)', '@entry.LedgerState', '@entry.CreatedAt.ToString("g")')" class="btn btn-sm btn-outline-dark text-[9px] py-0.5 px-2 rounded">
+                                        <i class="bi bi-eye me-1"></i> Drill Down
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="12" class="text-center text-gray-500 py-4 text-xs">No suspense ledger transactions recorded.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- SUSPENSE AUDIT TRACE MODAL -->
+<div class="modal fade" id="suspenseTraceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-2xl border-0 shadow-2xl p-3">
+            <div class="modal-header border-b pb-2">
+                <div>
+                    <h5 class="modal-title font-bold text-gray-900 text-sm">Suspense Ledger Lifecycle Trace</h5>
+                    <p class="text-xs text-gray-500 my-0">Complete audit trail: Merchant Obligation &rarr; Funds Collected &rarr; Bank Suspense Account &rarr; Funds Held &rarr; Loan Approved &rarr; Disbursement Conditions Met &rarr; Supplier Disbursement &rarr; Balance Reconciled</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 space-y-3">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs">
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Txn Reference</span>
+                        <strong class="font-mono text-gray-900 text-sm" id="stRef">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Merchant</span>
+                        <strong class="text-gray-900" id="stMerchant">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Supplier</span>
+                        <strong class="text-gray-900" id="stSupplier">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Amount</span>
+                        <strong class="font-mono text-blue-600 text-sm" id="stAmount">-</strong>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl p-3 bg-white space-y-2">
+                    <h6 class="text-xs font-bold text-gray-800 mb-2">Double-Entry Ledger Trace</h6>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">1. Merchant Obligation:</span>
+                            <span class="text-gray-500">Credit Line Reserved & Invoice Validated</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">2. Bank Suspense Deposit:</span>
+                            <span class="text-gray-500" id="stStateTrace">State: FundsHeld in Bank Suspense</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">3. Disbursement Check:</span>
+                            <span class="text-gray-500">Validation conditions & supplier dispatch verified</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-44">4. Reconciliation:</span>
+                            <span class="text-gray-500">Double-entry balanced & posted to SHA-256 TrustChain</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-t pt-2 justify-between">
+                <a href="@Url.Action("TrustChain", "Financier")" class="btn btn-sm btn-outline-dark text-xs font-bold">
+                    <i class="bi bi-link-45deg me-1"></i> View TrustChain Ledger
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary text-xs" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        function showSuspenseTraceModal(ref, merchant, supplier, poNo, invNo, amount, state, date) {
+            document.getElementById('stRef').textContent = ref;
+            document.getElementById('stMerchant').textContent = merchant;
+            document.getElementById('stSupplier').textContent = supplier;
+            document.getElementById('stAmount').textContent = amount;
+            document.getElementById('stStateTrace').textContent = 'State: ' + state + ' (Logged ' + date + ')';
+
+            var modal = new bootstrap.Modal(document.getElementById('suspenseTraceModal'));
+            modal.show();
+        }
+    </script>
+}

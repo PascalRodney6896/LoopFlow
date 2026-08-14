@@ -14,5 +14,10 @@ namespace LoopFlow.Controllers
         {
             return RedirectToAction("CreateRequest", "Buyer");
         }
+
+        public ActionResult Reports()
+        {
+            return RedirectToAction("Reports", "Buyer");
+        }
     }
 }

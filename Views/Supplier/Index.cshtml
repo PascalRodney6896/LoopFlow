@@ -51,6 +51,10 @@
         }
 
     .supplier-dashboard .stat-label {
+    .btn-supplier-primary {
+        background: #059669;
+        color: white;
+        font-weight: 600;
         font-size: 10px;
         color: #9aa0a6;
         font-weight: 500;
@@ -135,6 +139,10 @@
     }
 
     .supplier-dashboard .request-meta {
+    .btn-supplier-danger {
+        background: #dc2626;
+        color: white;
+        font-weight: 600;
         font-size: 10px;
         color: #6b7280;
         margin: 0;
@@ -269,11 +277,18 @@
 </style>
 
 <div class="px-4 py-3 supplier-dashboard">
+<div class="px-4 py-3 supplier-dashboard space-y-4">
     <!-- Page Header -->
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
         <div>
             <h1 class="text-lg font-bold text-gray-900">Supplier Portal & Instant Payout Dashboard</h1>
             <p class="text-xs text-gray-500">Review pending buyer-initiated financing requests, confirm inventory availability, and trigger real-time disbursements via LOOP Send Money API.</p>
+            <h1 class="text-base font-bold text-gray-900 my-0">
+                Supplier Dashboard &mdash; @(activeSupplier?.User != null ? activeSupplier.User.FullName : "Commercial Counterparty")
+            </h1>
+            <p class="text-xs text-gray-500 my-0.5">
+                Verify merchant orders and invoices, confirm inventory & delivery, and track real-time settlement payouts.
+            </p>
         </div>
         <div class="flex items-center gap-2">
             <span class="text-[10px] text-gray-500">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</span>
@@ -284,6 +299,9 @@
     <!-- STATISTICS CARDS ROW - 4 Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
         <!-- Total Pending -->
+    <!-- 1. TOP-LEVEL METRICS ROW - 4 Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- 1. Pending Requests -->
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
@@ -316,6 +334,8 @@
             <div class="flex items-center gap-2 mt-1">
                 <span class="text-[10px] text-green-600 font-medium"><i class="bi bi-arrow-up"></i> @(totalCompleted > 0 ? "Active" : "No payouts")</span>
                 <span class="text-[9px] text-gray-400">@(totalCompleted > 0 ? "successful transactions" : "awaiting new orders")</span>
+            <div class="flex items-center gap-1 mt-1">
+                <span class="text-[10px] text-green-600 font-medium"><i class="bi bi-arrow-up me-1"></i> Successful payouts</span>
             </div>
         </div>
 
@@ -333,6 +353,7 @@
         </div>
 
         <!-- Active Suppliers -->
+        <!-- 4. Active Orders -->
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
@@ -355,6 +376,74 @@
 
         <!-- LEFT PANEL (Cols 1 to 8) -->
         <div class="col-span-12 lg:col-span-8 space-y-3">
+    <!-- 2. RECENT PURCHASE ORDERS TABLE (FULL WIDTH DIRECTLY BELOW STATS CARDS) -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <div class="flex justify-between items-center mb-3">
+            <div>
+                <h4 class="font-normal text-gray-900 text-xs my-0">Recent Purchase Orders</h4>
+                <p class="text-[10px] text-gray-500 my-0">Orders requiring supplier verification, auto-invoicing, or dispatch</p>
+            </div>
+            <a href="@Url.Action("Orders", "Supplier")" class="text-[10px] text-[#ff5f00] font-normal hover:underline">View All Orders &rarr;</a>
+        </div>
+
+        @if (pendingRequests.Count == 0 && recentOrders.Count == 0)
+        {
+            <div class="empty-state py-4 text-center">
+                <i class="bi bi-inbox text-gray-300 text-3xl"></i>
+                <p class="text-xs font-normal text-gray-500 my-1">No purchase orders found</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-wrapper">
+                <table class="portfolio-table text-xs w-full">
+                    <thead>
+                        <tr class="text-gray-500 font-normal">
+                            <th class="fw-normal py-2">Order #</th>
+                            <th class="fw-normal py-2">Merchant</th>
+                            <th class="fw-normal py-2">Item Description</th>
+                            <th class="fw-normal py-2">Amount</th>
+                            <th class="fw-normal py-2">Funding Path</th>
+                            <th class="fw-normal py-2">Fulfilment Status</th>
+                            <th class="fw-normal py-2">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var req in pendingRequests)
+                        {
+                            <tr class="border-b text-gray-700 font-normal">
+                                <td class="py-2 fw-normal">
+                                    <a href="@Url.Action("OrderDetails", "Supplier", new { id = req.OrderId })" class="text-gray-700 hover:text-[#ff5f00] font-normal">
+                                        #@(req.Order != null ? req.Order.OrderNumber : "ORD-" + req.OrderId)
+                                    </a>
+                                </td>
+                                <td class="py-2 fw-normal">@(req.Order?.Buyer?.User?.FullName ?? "Merchant")</td>
+                                <td class="py-2 fw-normal text-gray-600">@req.ItemDescription</td>
+                                <td class="py-2 fw-normal font-mono">KES @string.Format("{0:N0}", req.Amount)</td>
+                                <td class="py-2 fw-normal">
+                                    <span class="badge bg-amber-50 text-amber-800 border border-amber-200 fw-normal text-[9px]">
+                                        @(req.Order?.FundingPath != null ? req.Order.FundingPath.Replace("_", " ") : "BANK FINANCED")
+                                    </span>
+                                </td>
+                                <td class="py-2 fw-normal">
+                                    <span class="badge bg-amber-100 text-amber-800 fw-normal text-[9px]">Pending Verification</span>
+                                </td>
+                                <td class="py-2 fw-normal">
+                                    <div class="flex items-center gap-1">
+                                        @using (Html.BeginForm("ConfirmTransaction", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                                        {
+                                            <input type="hidden" name="splitId" value="@req.Id" />
+                                            <button type="submit" class="btn-supplier-primary">Confirm</button>
+                                        }
+                                        @using (Html.BeginForm("RejectTransaction", "Supplier", FormMethod.Post, new { @class = "inline" }))
+                                        {
+                                            <input type="hidden" name="splitId" value="@req.Id" />
+                                            <button type="submit" class="btn-supplier-danger">Reject</button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
 
             <!-- Pending Approval Queue -->
             <div class="activity-card">
@@ -387,10 +476,33 @@
                                     <p class="request-meta">Merchant: @(req.Buyer != null && req.Buyer.User != null ? req.Buyer.User.FullName : "")</p>
                                     <p class="request-meta">Amount: KES @string.Format("{0:N0}", req.TotalAmount)</p>
                                     @if (req.Order != null && req.Order.SupplierSplits != null)
+                            <tr class="border-b text-gray-700 font-normal">
+                                <td class="py-2 fw-normal font-mono">
+                                    <a href="@Url.Action("OrderDetails", "Supplier", new { id = po.Id })" class="text-gray-700 hover:text-[#ff5f00] font-normal">
+                                        @po.OrderNumber
+                                    </a>
+                                </td>
+                                <td class="py-2 fw-normal">@(po.Buyer?.User?.FullName ?? "Merchant")</td>
+                                <td class="py-2 fw-normal text-gray-600">Purchase Order Items</td>
+                                <td class="py-2 fw-normal font-mono">KES @string.Format("{0:N0}", po.TotalAmount)</td>
+                                <td class="py-2 fw-normal">
+                                    <span class="badge bg-blue-50 text-blue-700 border border-blue-200 fw-normal text-[9px]">
+                                        @(po.FundingPath != null ? po.FundingPath.Replace("_", " ") : "BANK FINANCED")
+                                    </span>
+                                </td>
+                                <td class="py-2 fw-normal">
+                                    <span class="badge bg-light text-dark border fw-normal text-[9px]">
+                                        @po.FulfilmentStatus
+                                    </span>
+                                </td>
+                                <td class="py-2 fw-normal">
+                                    @if (po.FulfilmentStatus == "Accepted" || po.FulfilmentStatus == "Inventory Confirmed")
                                     {
                                         foreach (var s in req.Order.SupplierSplits.Take(2))
                                         {
                                             <p class="request-meta">• @s.SupplierName: KES @string.Format("{0:N0}", s.Amount)</p>
+                                            <input type="hidden" name="orderId" value="@po.Id" />
+                                            <button type="submit" class="btn btn-sm btn-primary text-[10px] py-0.5 px-2.5 fw-normal" style="border-radius: 4px;">Dispatch</button>
                                         }
                                         if (req.Order.SupplierSplits.Count > 2)
                                         {
@@ -406,6 +518,16 @@
                                     </button>
                                 }
                             </div>
+                                            <input type="hidden" name="orderId" value="@po.Id" />
+                                            <button type="submit" class="btn btn-sm btn-dark text-[10px] py-0.5 px-2.5 fw-normal" style="border-radius: 4px;">Complete Delivery</button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <a href="@Url.Action("OrderDetails", "Supplier", new { id = po.Id })" class="text-[10px] text-gray-600 fw-normal hover:underline">View Details</a>
+                                    }
+                                </td>
+                            </tr>
                         }
                     </div>
                 }
@@ -454,13 +576,33 @@
                         Recent Payouts
                     </h5>
                     <a href="@Url.Action("Payments", "Supplier")" class="text-[10px] text-loop font-medium">View All</a>
+    <!-- 3. LOWER SECTION (2 COLUMNS: RECENT PAYOUTS & SUPPLIER ACTIONS) -->
+    <div class="grid grid-cols-12 gap-3">
+
+        <!-- LEFT COLUMN: RECENT PAYOUTS LEDGER (Cols 1 to 8) -->
+        <div class="col-span-12 lg:col-span-8 space-y-3">
+            <div class="activity-card bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <h5 class="font-bold text-gray-800 text-xs my-0">
+                        <i class="bi bi-check-all me-1.5" style="color: #059669;"></i>
+                        Recent Payouts Ledger
+                    </h5>
+                    <a href="@Url.Action("Payments", "Supplier")" class="text-[10px] text-loop font-medium hover:underline">View All &rarr;</a>
                 </div>
-                <div class="feed-list">
+                <div class="feed-list space-y-2">
                     @foreach (var split in completedSplits.Take(4))
                     {
-                        <div class="feed-item">
-                            <div class="feed-icon" style="background: #d1fae5; color: #059669;">
-                                <i class="bi bi-check-circle"></i>
+                        <div class="feed-item p-2 rounded-lg border border-gray-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="feed-icon w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </div>
+                                <div>
+                                    <p class="feed-title font-bold text-xs text-gray-900 my-0">Order #@(split.Order != null ? split.Order.OrderNumber : "")</p>
+                                    <p class="feed-time text-[10px] text-gray-500 my-0">
+                                        Merchant: @(split.Order?.Buyer?.User?.FullName ?? "Merchant")
+                                    </p>
+                                </div>
                             </div>
                             <div class="feed-content">
                                 <p class="feed-title">Order #@(split.Order != null ? split.Order.OrderNumber : "")</p>
@@ -468,17 +610,58 @@
                                 <p class="feed-time" style="font-size: 8px; color: #9aa0a6;">
                                     Ref: @split.TransactionReference
                                 </p>
+                            <div class="text-right">
+                                <span class="font-bold text-emerald-600 font-mono text-xs block">KES @string.Format("{0:N0}", split.Amount)</span>
+                                <span class="text-[9px] text-gray-400 font-mono">Ref: @(split.TransactionReference ?? "TXN-SETTLED")</span>
                             </div>
                         </div>
                     }
                     @if (!completedSplits.Any())
                     {
-                        <div class="empty-state" style="padding: 12px;">
-                            <p style="font-size: 11px;">No completed payouts yet</p>
+                        <div class="empty-state py-3 text-center">
+                            <p class="text-xs text-gray-500 my-0">No completed payouts recorded yet</p>
                         </div>
                     }
                 </div>
             </div>
+
+            <!-- TRUSTCHAIN VERIFICATION BANNER -->
+            <div class="p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-100 shadow-sm flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-[#ff5f00] text-white flex items-center justify-center text-base">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-xs font-bold text-gray-900 my-0">TrustChain Cryptographic Audit Active</h6>
+                        <p class="text-[10px] text-gray-600 my-0">Every order verification, auto-invoicing, dispatch, and settlement payout is SHA-256 hashed.</p>
+                    </div>
+                </div>
+                <a href="@Url.Action("TrustChain", "Supplier")" class="btn btn-sm bg-[#ff5f00] text-white font-bold text-[10px] px-3 py-1.5 rounded-lg shadow-sm hover:bg-orange-600">
+                    Explore Audit Trail &rarr;
+                </a>
+            </div>
         </div>
+
+        <!-- RIGHT COLUMN: QUICK ACTIONS (Cols 9 to 12) -->
+        <div class="col-span-12 lg:col-span-4 space-y-3">
+            <div class="quick-actions-card bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <h5 class="font-bold text-gray-800 text-xs mb-3">Supplier Portal Navigation</h5>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("Orders", "Supplier")'">
+                        <div class="quick-action-icon" style="background: #dbeafe; color: #2563eb;">
+                            <i class="bi bi-box"></i>
+                        </div>
+                        <span class="quick-action-label">My Orders</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("TrustChain", "Supplier")'">
+                        <div class="quick-action-icon" style="background: #e0e7ff; color: #4f46e5;">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <span class="quick-action-label">TrustChain Audit</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>

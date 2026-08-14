@@ -35,6 +35,8 @@ namespace LoopFlow.Models
         public DbSet<InvestmentRecommendation> InvestmentRecommendations { get; set; }
         public DbSet<CashFlowForecast> CashFlowForecasts { get; set; }
         public DbSet<SystemSetting> SystemSettings { get; set; }
+        public DbSet<BankSuspenseAccount> BankSuspenseAccounts { get; set; }
+        public DbSet<BankSuspenseLedgerEntry> BankSuspenseLedgerEntries { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {

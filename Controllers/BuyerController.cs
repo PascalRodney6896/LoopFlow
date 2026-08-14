@@ -160,13 +160,14 @@ namespace LoopFlow.Controllers
                 // Validate & Reserve Pre-approved Facility Limit
                 if (buyer.CreditLimit != null)
                 {
-                    if (buyer.CreditLimit.AvailableCredit < totalAmount)
+                    decimal availCredit = buyer.CreditLimit.TotalCreditLimit - buyer.CreditLimit.UsedCredit;
+                    if (totalAmount > availCredit)
                     {
-                        TempData["ErrorMessage"] = "Order amount (KES " + totalAmount.ToString("N0") + ") exceeds available credit line facility (KES " + buyer.CreditLimit.AvailableCredit.ToString("N0") + ").";
+                        TempData["ErrorMessage"] = "Order creation blocked: Order total (KES " + totalAmount.ToString("N0") + ") exceeds your available credit line balance of KES " + availCredit.ToString("N0") + ". Please reduce quantity or choose direct cash payment.";
                         return RedirectToAction("CreateRequest");
                     }
                     buyer.CreditLimit.UsedCredit += totalAmount;
-                    buyer.CreditLimit.AvailableCredit -= totalAmount;
+                    buyer.CreditLimit.AvailableCredit = Math.Max(0m, buyer.CreditLimit.TotalCreditLimit - buyer.CreditLimit.UsedCredit);
                 }
                 financingStatus = "FACILITY_RESERVED";
                 paymentStatus = "UNPAID";
@@ -298,6 +299,20 @@ namespace LoopFlow.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        // GET: Buyer/Reports
+        public async Task<ActionResult> Reports()
+        {
+            var buyer = await _db.Buyers
+                .Include(b => b.User)
+                .Include(b => b.CreditLimit)
+                .Include(b => b.PurchaseOrders)
+                .Include(b => b.LoanTransactions)
+                .FirstOrDefaultAsync();
+
+            ViewBag.Wallet = await _db.LoopAccounts.FirstOrDefaultAsync(a => a.UserId == (buyer != null ? buyer.UserId : 1));
+            return View(buyer);
         }
 
         protected override void Dispose(bool disposing)

@@ -368,6 +368,12 @@ namespace LoopFlow.Controllers
                 .ToListAsync();
             ViewBag.TrustChainRecords = trustChainRecords;
 
+            var auditLogs = await _db.AuditLogs
+                .Where(a => a.EntityId == order.Id || a.ReferenceNumber == order.OrderNumber)
+                .OrderBy(a => a.Timestamp)
+                .ToListAsync();
+            ViewBag.AuditLogs = auditLogs;
+
             return View(order);
         }
 
@@ -799,6 +805,31 @@ namespace LoopFlow.Controllers
                 await _db.SaveChangesAsync();
             }
             return Json(new { success = true });
+        }
+
+        // 10. SUPPLIER REPORTS & SETTLEMENT STATEMENTS
+        public async Task<ActionResult> Reports()
+        {
+            var activeSupplier = await GetActiveSupplierAsync();
+            if (activeSupplier == null) return HttpNotFound();
+
+            var invoices = await _db.SupplierInvoices
+                .Include(i => i.Order)
+                .Where(i => i.SupplierId == activeSupplier.Id)
+                .OrderByDescending(i => i.Id)
+                .ToListAsync();
+
+            var splits = await _db.SupplierSplits
+                .Include(s => s.Order)
+                .Where(s => s.SupplierId == activeSupplier.Id)
+                .OrderByDescending(s => s.Id)
+                .ToListAsync();
+
+            ViewBag.Invoices = invoices;
+            ViewBag.Splits = splits;
+            ViewBag.ActiveSupplier = activeSupplier;
+
+            return View();
         }
 
         protected override void Dispose(bool disposing)

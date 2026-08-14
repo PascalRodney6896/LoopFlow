@@ -1,0 +1,91 @@
+@model System.Collections.Generic.List<LoopFlow.Models.Buyer>
+@{
+    ViewBag.Title = "Merchant & Buyer Portfolio";
+    Layout = "~/Views/Shared/_Layout_Financier.cshtml";
+}
+
+<div class="px-4 py-3 financier-dashboard space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+            <h1 class="text-base font-bold text-gray-900 my-0">Merchant & Buyer Portfolio</h1>
+            <p class="text-xs text-gray-500 my-0.5">Approved merchant credit line facilities, credit scores, active exposures, and underwriting status.</p>
+        </div>
+        <a href="@Url.Action("Index", "Financier")" class="btn btn-sm btn-outline-secondary text-xs">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="stat-card">
+            <p class="stat-label">Total Merchants</p>
+            <p class="stat-number text-blue-600">@Model.Count</p>
+        </div>
+        <div class="stat-card">
+            <p class="stat-label">Total Portfolio Limit</p>
+            <p class="stat-number text-loop">KES @string.Format("{0:N0}", Model.Sum(b => b.CreditLimit?.TotalCreditLimit ?? 0))</p>
+        </div>
+        <div class="stat-card">
+            <p class="stat-label">Total Outstanding</p>
+            <p class="stat-number text-amber-600">KES @string.Format("{0:N0}", Model.Sum(b => b.CreditLimit?.UsedCredit ?? 0))</p>
+        </div>
+        <div class="stat-card">
+            <p class="stat-label">Average Credit Score</p>
+            <p class="stat-number text-green-600">@(Model.Any() ? (int)Model.Average(b => b.CreditScore) : 0)/100</p>
+        </div>
+    </div>
+
+    <!-- Buyers Table Card -->
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div class="table-wrapper">
+            <table class="portfolio-table text-xs">
+                <thead>
+                    <tr>
+                        <th>Merchant / Buyer Name</th>
+                        <th>Buyer Code</th>
+                        <th>Business Category</th>
+                        <th>Credit Score</th>
+                        <th>Approved Limit</th>
+                        <th>Utilised Amount</th>
+                        <th>Available Limit</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var buyer in Model)
+                    {
+                        var cl = buyer.CreditLimit;
+                        decimal total = cl?.TotalCreditLimit ?? 500000m;
+                        decimal used = cl?.UsedCredit ?? 0m;
+                        decimal avail = cl?.AvailableCredit ?? (total - used);
+                        var scoreClass = buyer.CreditScore >= 80 ? "high" : buyer.CreditScore >= 60 ? "medium" : "low";
+
+                        <tr>
+                            <td class="font-bold text-gray-900 py-2">@(buyer.User != null ? buyer.User.FullName : "Merchant")</td>
+                            <td class="font-mono text-gray-500 text-[10px]">@buyer.BuyerCode</td>
+                            <td class="text-gray-600">@buyer.BusinessCategory</td>
+                            <td>
+                                <span class="credit-score @scoreClass">@buyer.CreditScore/100</span>
+                            </td>
+                            <td class="font-bold text-blue-700 font-mono">KES @string.Format("{0:N0}", total)</td>
+                            <td class="font-bold text-amber-700 font-mono">KES @string.Format("{0:N0}", used)</td>
+                            <td class="font-bold text-green-700 font-mono">KES @string.Format("{0:N0}", avail)</td>
+                            <td>
+                                <span class="badge bg-green-100 text-green-800 text-[9px]">@(cl != null && cl.IsActive ? "ACTIVE" : "EXPIRED")</span>
+                            </td>
+                            <td>
+                                <a href="@Url.Action("Index", "Financier", new { search = buyer.BuyerCode })" class="btn btn-sm btn-outline-primary text-[10px] py-0.5 px-2 rounded">
+                                    View Transactions
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

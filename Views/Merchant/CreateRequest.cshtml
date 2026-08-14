@@ -1,9 +1,14 @@
 @model LoopFlow.Models.Buyer
 @{
     ViewBag.Title = "Create Trade Financing Order";
-    Layout = null; // Mobile layout matching Index.cshtml
+    Layout = null;
     var suppliers = ViewBag.Suppliers as System.Collections.Generic.List<LoopFlow.Models.Supplier> ?? new System.Collections.Generic.List<LoopFlow.Models.Supplier>();
     var wallet = ViewBag.Wallet as LoopFlow.Models.LoopAccount;
+
+    var cl = Model?.CreditLimit;
+    decimal totalCredit = cl?.TotalCreditLimit ?? 500000m;
+    decimal usedCredit = cl?.UsedCredit ?? 0m;
+    decimal availCredit = cl?.AvailableCredit ?? (totalCredit - usedCredit);
 }
 
 <!DOCTYPE html>
@@ -11,7 +16,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-    <title>LOOP FLOW — Create Trade Order</title>
+    <title>LOOP FLOW - Create Trade Order</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="~/Content/site.css" />
@@ -105,10 +110,7 @@
 </head>
 <body>
 
-    <!-- Page Wrapper -->
     <div class="buyer-dashboard-wrapper">
-
-        <!-- Mobile Bottom Navigation -->
         <nav class="mobile-bottom-nav">
             <div class="nav-item" onclick="window.location.href='@Url.Action("Index", "Merchant")#home'">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -122,6 +124,12 @@
                     <path d="M9 12l2 2 4-4" />
                 </svg>
                 <span class="nav-label">Orders</span>
+            </div>
+            <div class="nav-item" onclick="window.location.href='@Url.Action("Index", "Merchant")#credit'">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span class="nav-label">Credit</span>
             </div>
             <div class="nav-item" onclick="window.location.href='@Url.Action("Index", "Merchant")#forecast'">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -137,17 +145,48 @@
             </div>
         </nav>
 
-        <!-- Main Content Area -->
 		<div class="main-content-area pb-5">
-
-			<!-- Merchant Page Header -->
 			<div class="buyer-header mb-3 text-center justify-center">
 				<div class="w-full text-center">
 					<h2 class="text-base font-bold text-gray-900 my-0 text-center">Create Purchase Order</h2>
 				</div>
 			</div>
 
-			<!-- Form Card -->
+            <!-- PROMINENT CREDIT FACILITY BALANCE DISPLAY CARD -->
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3.5 rounded-xl border border-amber-200 mb-3 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="bi bi-credit-card-2-front-fill text-[#ff5f00] text-lg"></i>
+                        <div>
+                            <h6 class="font-bold text-xs text-gray-900 my-0">LOOP SME Credit Line Facility</h6>
+                            <p class="text-[10px] text-gray-500 my-0">NCBA Bank Underwritten Pre-Approved Line</p>
+                        </div>
+                    </div>
+                    <span class="badge bg-amber-100 text-amber-800 text-[10px] font-bold">Active Facility</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-amber-200/60 text-center">
+                    <div>
+                        <span class="text-[9px] text-gray-500 uppercase font-semibold block">Total Approved Limit</span>
+                        <strong class="text-xs font-mono text-gray-900">KES @string.Format("{0:N0}", totalCredit)</strong>
+                    </div>
+                    <div>
+                        <span class="text-[9px] text-gray-500 uppercase font-semibold block">Utilised Credit</span>
+                        <strong class="text-xs font-mono text-amber-700">KES @string.Format("{0:N0}", usedCredit)</strong>
+                    </div>
+                    <div class="bg-white rounded-lg p-1 border border-emerald-400">
+                        <span class="text-[9px] text-emerald-800 uppercase font-bold block">Credit Limit Balance</span>
+                        <strong class="text-xs font-mono text-emerald-600 font-bold" id="availableCreditDisplay">KES @string.Format("{0:N0}", availCredit)</strong>
+                    </div>
+                </div>
+            </div>
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger text-xs rounded-xl border-red-200 p-3 mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> @TempData["ErrorMessage"]
+                </div>
+            }
+
 			<div class="order-form-card">
 				@using (Html.BeginForm("CreateRequest", "Merchant", FormMethod.Post, new { id = "createOrderForm" }))
 				{
@@ -160,10 +199,7 @@
 						</button>
 					</div>
 
-					<!-- Line Items Container -->
 					<div id="lineItemsContainer">
-
-						<!-- Single Default Line Item #1 -->
 						<div class="line-item-card">
 							<div class="flex justify-between items-center mb-2">
 								<span class="badge bg-dark text-white text-[9px] font-mono item-number-badge">Line Item #1</span>
@@ -175,7 +211,7 @@
 									<select name="supplierIds" class="form-select form-select-sm text-xs supplier-select" required>
 										@foreach (var s in suppliers)
 										{
-											<option value="@s.Id">@(s.User != null ? s.User.FullName : s.SupplierCode) (@s.SupplierCode) &mdash; @s.BusinessCategory</option>
+											<option value="@s.Id">@(s.User != null ? s.User.FullName : s.SupplierCode) (@s.SupplierCode) - @s.BusinessCategory</option>
 										}
 									</select>
 								</div>
@@ -191,7 +227,6 @@
 								</div>
 								<div>
 									<label class="form-label-sm">Unit Price (KES):</label>
-									<!-- Section A4: Unit price readonly -->
 									<input type="number" name="unitPrices" class="form-control form-control-sm text-xs price-input bg-gray-100" value="300" min="1" readonly required />
 								</div>
 								<div>
@@ -200,10 +235,8 @@
 								</div>
 							</div>
 						</div>
-
 					</div>
 
-					<!-- Delivery Date & Grand Total Summary Banner -->
 					<div class="summary-banner my-3">
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
 							<div>
@@ -213,13 +246,15 @@
 							<div class="text-right">
 								<span class="text-[10px] text-amber-800 uppercase tracking-wider block font-semibold">Total Order Amount</span>
 								<span class="text-xl font-bold text-amber-900 font-mono" id="grandTotalDisplay">KES 300,000</span>
+                                <span class="text-[10px] text-red-600 font-bold block mt-0.5 d-none" id="creditWarningText">
+                                    ⚠️ Exceeds Available Credit Limit Balance of KES @string.Format("{0:N0}", availCredit)
+                                </span>
 							</div>
 						</div>
 					</div>
 
 					<input type="hidden" name="paymentPath" id="paymentPathInput" value="BANK_FINANCED" />
 
-					<!-- Clean Minimal & Separated Action Buttons -->
 					<div class="d-flex justify-content-between align-items-center pt-3 border-t border-gray-100">
 						<a href="@Url.Action("Index", "Merchant")" class="btn-theme-outline">
 							<i class="bi bi-x"></i> Cancel Order
@@ -230,11 +265,9 @@
 					</div>
 				}
 			</div>
-
 		</div>
     </div>
 
-    <!-- Section A5: Payment Path Modal (Pay Now vs Get Financing) -->
     <div class="modal fade" id="paymentPathModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-2xl border-0 shadow-2xl p-3">
@@ -264,7 +297,7 @@
                         <div>
                             <h6 class="font-bold text-xs text-gray-900 my-0 group-hover:text-blue-600">Get Financing (SME Credit Facility)</h6>
                             <p class="text-[11px] text-gray-500 my-0.5">Use your pre-approved LOOP SME credit line facility.</p>
-                            <span class="badge bg-blue-100 text-blue-800 text-[9px]">Pre-Approved Facility</span>
+                            <span class="badge bg-blue-100 text-blue-800 text-[9px]">Credit Limit Balance: KES @string.Format("{0:N0}", availCredit)</span>
                         </div>
                     </button>
                 </div>
@@ -272,54 +305,21 @@
         </div>
     </div>
 
-    <!-- Hidden Line Item Template for Dynamic Addition -->
-    <div id="lineItemTemplate" class="d-none">
-        <div class="line-item-card">
-            <div class="flex justify-between items-center mb-2">
-                <span class="badge bg-secondary text-white text-[9px] font-mono item-number-badge">Line Item #</span>
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] text-gray-500 font-mono item-subtotal-display">Subtotal: KES 0</span>
-                    <button type="button" class="btn btn-link text-danger p-0 text-[11px] remove-line-item-btn" title="Remove line item">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                <div>
-                    <label class="form-label-sm">Select Supplier:</label>
-                    <select name="supplierIds" class="form-select form-select-sm text-xs supplier-select" required>
-                        @foreach (var s in suppliers)
-                        {
-                            <option value="@s.Id">@(s.User != null ? s.User.FullName : s.SupplierCode) (@s.SupplierCode) &mdash; @s.BusinessCategory</option>
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label-sm">Item Description / Specifications:</label>
-                    <input type="text" name="descriptions" class="form-control form-control-sm text-xs" placeholder="e.g. CAN Fertilizer, Agro-chemicals" required />
-                </div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <div>
-                    <label class="form-label-sm">Quantity:</label>
-                    <input type="number" name="quantities" class="form-control form-control-sm text-xs qty-input" value="100" min="1" required />
-                </div>
-                <div>
-                    <label class="form-label-sm">Unit Price (KES):</label>
-                    <!-- Section A4: Unit price readonly -->
-                    <input type="number" name="unitPrices" class="form-control form-control-sm text-xs price-input bg-gray-100" value="1500" min="1" readonly required />
-                </div>
-                <div>
-                    <label class="form-label-sm">Line Total (KES):</label>
-                    <input type="number" name="amounts" class="form-control form-control-sm text-xs amount-input font-bold bg-gray-100" value="150000" readonly required />
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const MAX_AVAILABLE_CREDIT = @availCredit;
+
         function submitWithPaymentPath(path) {
+            let grandTotal = 0;
+            document.querySelectorAll('#lineItemsContainer .amount-input').forEach(input => {
+                grandTotal += parseFloat(input.value) || 0;
+            });
+
+            if (path === 'BANK_FINANCED' && grandTotal > MAX_AVAILABLE_CREDIT) {
+                alert('Order Creation Blocked!\n\nYour total order amount (KES ' + grandTotal.toLocaleString() + ') exceeds your available credit line balance of KES ' + MAX_AVAILABLE_CREDIT.toLocaleString() + '.\n\nPlease reduce line item quantities or select Pay Now (Account/Wallet).');
+                return;
+            }
+
             document.getElementById('paymentPathInput').value = path;
             document.getElementById('createOrderForm').submit();
         }
@@ -331,7 +331,6 @@
                 const rows = document.querySelectorAll('#lineItemsContainer .line-item-card');
 
                 rows.forEach((row, index) => {
-                    // Update badge number
                     const badge = row.querySelector('.item-number-badge');
                     if (badge) badge.textContent = 'Line Item #' + (index + 1);
 
@@ -348,7 +347,17 @@
                     grandTotal += lineTotal;
                 });
 
-                document.getElementById('grandTotalDisplay').textContent = 'KES ' + grandTotal.toLocaleString();
+                const totalDisplay = document.getElementById('grandTotalDisplay');
+                const warningText = document.getElementById('creditWarningText');
+                if (totalDisplay) totalDisplay.textContent = 'KES ' + grandTotal.toLocaleString();
+
+                if (grandTotal > MAX_AVAILABLE_CREDIT) {
+                    if (totalDisplay) totalDisplay.classList.add('text-red-600');
+                    if (warningText) warningText.classList.remove('d-none');
+                } else {
+                    if (totalDisplay) totalDisplay.classList.remove('text-red-600');
+                    if (warningText) warningText.classList.add('d-none');
+                }
             }
 
             document.addEventListener('input', function (e) {
@@ -357,7 +366,6 @@
                 }
             });
 
-            // Dynamic Addition of Line Items
             const addBtn = document.getElementById('addLineItemBtn');
             const template = document.getElementById('lineItemTemplate');
             const container = document.getElementById('lineItemsContainer');
@@ -365,8 +373,6 @@
             if (addBtn && template && container) {
                 addBtn.addEventListener('click', function () {
                     const clone = template.firstElementChild.cloneNode(true);
-                    
-                    // Attach event to remove button
                     const removeBtn = clone.querySelector('.remove-line-item-btn');
                     if (removeBtn) {
                         removeBtn.addEventListener('click', function () {

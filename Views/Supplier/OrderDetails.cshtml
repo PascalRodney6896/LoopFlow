@@ -6,6 +6,7 @@
     var activeSupplier = ViewBag.ActiveSupplier as LoopFlow.Models.Supplier;
     var supplierSplits = ViewBag.SupplierSplits as System.Collections.Generic.List<LoopFlow.Models.SupplierSplit> ?? new System.Collections.Generic.List<LoopFlow.Models.SupplierSplit>();
     var trustChainRecords = ViewBag.TrustChainRecords as System.Collections.Generic.List<LoopFlow.Models.TrustChainRecord> ?? new System.Collections.Generic.List<LoopFlow.Models.TrustChainRecord>();
+    var auditLogs = ViewBag.AuditLogs as System.Collections.Generic.List<LoopFlow.Models.AuditLog> ?? new System.Collections.Generic.List<LoopFlow.Models.AuditLog>();
 
     // Order Lifecycle Progress Calculation
     string[] stages = new string[] { "Order Received", "Accepted", "Inventory Confirmed", "Dispatched", "Delivered", "Paid" };
@@ -17,14 +18,14 @@
     else if (Model.FulfilmentStatus == "Paid" || Model.Status == "Completed") { currentStageIndex = 5; }
 }
 
-<div class="px-2 py-1 space-y-3">
+<div class="px-3 py-2 space-y-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-            <a href="@Url.Action("Orders", "Supplier")" class="btn btn-sm btn-outline-secondary text-xs"><i class="bi bi-arrow-left"></i> Back</a>
+    <div class="flex items-center justify-between bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex items-center gap-3">
+            <a href="@Url.Action("Orders", "Supplier")" class="btn btn-sm btn-outline-secondary text-xs"><i class="bi bi-arrow-left me-1"></i> Back</a>
             <div>
-                <h1 class="text-base font-bold text-gray-900">Purchase Order #@Model.OrderNumber</h1>
-                <p class="text-xs text-gray-500">Order Date: @Model.OrderDate.ToString("dd MMMM yyyy, HH:mm") • Payment Method: @Model.PaymentMethod</p>
+                <h1 class="text-base font-bold text-gray-900 my-0">Purchase Order #@Model.OrderNumber</h1>
+                <p class="text-xs text-gray-500 my-0.5">Order Date: @Model.OrderDate.ToString("dd MMMM yyyy, HH:mm") • Funding Path: <span class="badge bg-blue-100 text-blue-800 text-[10px]">@(Model.FundingPath != null ? Model.FundingPath.Replace("_", " ") : "BANK FINANCED")</span></p>
             </div>
         </div>
         <div>
@@ -34,10 +35,9 @@
         </div>
     </div>
 
-    <!-- 3. ORDER LIFECYCLE PROGRESS BAR -->
-    <!-- Order Lifecycle: Order Received → Accepted → Inventory Confirmed → Fulfilment → Dispatched → Delivered → Paid -->
-    <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-        <h6 class="font-bold text-xs text-gray-800 mb-3"><i class="bi bi-diagram-3 me-1 text-loop"></i> Core Supplier Order Lifecycle</h6>
+    <!-- 1. ORDER LIFECYCLE PROGRESS STEPPER -->
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <h6 class="font-bold text-xs text-gray-800 mb-3"><i class="bi bi-diagram-3 me-1.5" style="color: #ff5f00;"></i> End-to-End Transaction Lifecycle Progress</h6>
         <div class="grid grid-cols-6 gap-2 text-center relative">
             @for (int i = 0; i < stages.Length; i++)
             {
@@ -63,34 +63,35 @@
 
     <!-- DETAILS GRID -->
     <div class="grid grid-cols-12 gap-3">
-        <!-- LEFT COLUMN: Merchant & Order Items -->
+        <!-- LEFT COLUMN: Merchant Information, Order Items, Controls -->
         <div class="col-span-12 lg:col-span-8 space-y-3">
-            <!-- Merchant Information (Privacy Guarded: No Credit Score or Account Balance Exposed) -->
-            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-building me-1 text-blue-600"></i> Merchant Information</h6>
-                <div class="grid grid-cols-2 gap-2 text-xs">
+            
+            <!-- Merchant Information -->
+            <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-building me-1 text-blue-600"></i> Merchant Counterparty</h6>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                     <div>
-                        <span class="text-gray-400 text-[10px]">Merchant Name / Business:</span>
-                        <p class="font-bold text-gray-900">@(Model.Buyer?.User?.FullName ?? Model.Buyer?.User?.BusinessName ?? "Commercial Merchant")</p>
+                        <span class="text-gray-400 text-[10px] block">Merchant Name:</span>
+                        <strong class="text-gray-900">@(Model.Buyer?.User?.FullName ?? Model.Buyer?.User?.BusinessName ?? "Commercial Merchant")</strong>
                     </div>
                     <div>
-                        <span class="text-gray-400 text-[10px]">Business Category:</span>
-                        <p class="font-semibold text-gray-800">@(Model.Buyer?.BusinessCategory ?? "SME Counterparty")</p>
+                        <span class="text-gray-400 text-[10px] block">Business Category:</span>
+                        <span class="text-gray-800 font-medium">@(Model.Buyer?.BusinessCategory ?? "SME Counterparty")</span>
                     </div>
                     <div>
-                        <span class="text-gray-400 text-[10px]">Merchant Code:</span>
-                        <p class="font-mono text-gray-700">@(Model.Buyer?.BuyerCode ?? "BUY-001")</p>
+                        <span class="text-gray-400 text-[10px] block">Merchant Code:</span>
+                        <code class="text-gray-700 font-mono">@(Model.Buyer?.BuyerCode ?? "BUY-001")</code>
                     </div>
                     <div>
-                        <span class="text-gray-400 text-[10px]">Verification Status:</span>
-                        <p><span class="badge bg-green-100 text-green-800 text-[9px]">Verified Commercial Merchant</span></p>
+                        <span class="text-gray-400 text-[10px] block">Status:</span>
+                        <span class="badge bg-green-100 text-green-800 text-[9px]">Verified Commercial Partner</span>
                     </div>
                 </div>
             </div>
 
             <!-- Order Items & Supplier Share -->
-            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-box-seam me-1 text-purple-600"></i> Order Items & Supplier Split</h6>
+            <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-box-seam me-1 text-purple-600"></i> Purchase Order Line Items</h6>
                 <table class="table table-sm align-middle text-xs mb-0">
                     <thead class="table-light">
                         <tr>
@@ -109,8 +110,8 @@
                                 <td class="font-semibold text-gray-800">@split.ItemDescription</td>
                                 <td>@(split.Quantity ?? 1)</td>
                                 <td>KES @string.Format("{0:N2}", split.UnitPrice ?? split.Amount)</td>
-                                <td class="font-bold text-gray-900">KES @string.Format("{0:N2}", split.Amount)</td>
-                                <td class="font-mono text-gray-600">@(split.InvoiceNumber ?? "Not Issued")</td>
+                                <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N2}", split.Amount)</td>
+                                <td class="font-mono text-gray-600">@(split.InvoiceNumber ?? "Auto-Generated")</td>
                                 <td>
                                     @if (split.IsPaid || split.PaymentStatus == "COMPLETED")
                                     {
@@ -127,24 +128,55 @@
                 </table>
             </div>
 
-            <!-- Lifecycle Actions -->
-            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                <h6 class="font-bold text-xs text-gray-800 mb-2"><i class="bi bi-lightning-charge me-1 text-amber-600"></i> Supplier Lifecycle Controls</h6>
+            <!-- Lifecycle Actions Toolbar -->
+            <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2"><i class="bi bi-lightning-charge me-1 text-amber-600"></i> Execution Controls</h6>
+
+                <!-- Bank Loan Application Status Banner for BANK_FINANCED orders -->
+                @if (Model.FundingPath == "BANK_FINANCED" || Model.FundingPath == null)
+                {
+                    if (Model.FinancingStatus == "BANK_APPROVED" || Model.FinancingStatus == "DISBURSED")
+                    {
+                        <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-bold flex items-center justify-between mb-3">
+                            <span class="flex items-center gap-2">
+                                <i class="bi bi-check-circle-fill text-base text-emerald-600"></i>
+                                NCBA Bank Loan Financing Approved & Disbursed! Supplier Dispatch Unlocked.
+                            </span>
+                            <span class="badge bg-emerald-200 text-emerald-900 text-[10px]">DISBURSED</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 font-bold flex items-center justify-between mb-3">
+                            <span class="flex items-center gap-2">
+                                <i class="bi bi-bank text-base text-amber-600"></i>
+                                Loan Application Initiated & Submitted to Bank Financiers Dashboard. Awaiting Bank Underwriter Approval & Disbursement...
+                            </span>
+                            <a href="@Url.Action("Index", "Financier")" class="btn btn-sm btn-outline-warning text-[10px] py-1 px-2 font-bold" target="_blank">
+                                Go to Bank Dashboard &rarr;
+                            </a>
+                        </div>
+                    }
+                }
                 <div class="flex flex-wrap gap-2">
-                    @if (Model.SupplierVerificationStatus == "PENDING_VERIFICATION")
+                    @if (Model.SupplierVerificationStatus == "PENDING_VERIFICATION" || Model.Status == "PendingSupplierApproval")
                     {
                         using (Html.BeginForm("ConfirmTransaction", "Supplier", FormMethod.Post, new { @class = "inline" }))
                         {
                             <input type="hidden" name="splitId" value="@(supplierSplits.FirstOrDefault()?.Id ?? 0)" />
-                            <button type="submit" class="btn btn-sm btn-success text-xs">Verify & Confirm Transaction</button>
+                            <button type="submit" class="btn btn-sm btn-success text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">
+                                <i class="bi bi-check-circle me-1"></i> Verify & Auto-Generate Invoice
+                            </button>
                         }
                     }
-                    @if (!Model.InventoryAvailabilityConfirmed && Model.SupplierVerificationStatus == "VERIFIED")
+                    @if (!Model.InventoryAvailabilityConfirmed && (Model.SupplierVerificationStatus == "VERIFIED" || Model.FulfilmentStatus == "Accepted"))
                     {
                         using (Html.BeginForm("ConfirmInventory", "Supplier", FormMethod.Post, new { @class = "inline" }))
                         {
                             <input type="hidden" name="orderId" value="@Model.Id" />
-                            <button type="submit" class="btn btn-sm btn-info text-white text-xs">Confirm Inventory Readiness</button>
+                            <button type="submit" class="btn btn-sm btn-info text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">
+                                <i class="bi bi-boxes me-1"></i> Confirm Inventory Readiness
+                            </button>
                         }
                     }
                     @if (Model.FulfilmentStatus == "Inventory Confirmed" || Model.FulfilmentStatus == "Accepted")
@@ -152,7 +184,9 @@
                         using (Html.BeginForm("ConfirmDispatch", "Supplier", FormMethod.Post, new { @class = "inline" }))
                         {
                             <input type="hidden" name="orderId" value="@Model.Id" />
-                            <button type="submit" class="btn btn-sm btn-primary text-xs">Confirm Dispatch</button>
+                            <button type="submit" class="btn btn-sm bg-[#ff5f00] text-white text-xs font-bold px-3.5 py-1.5 rounded-lg hover:bg-orange-600 shadow-sm">
+                                <i class="bi bi-truck me-1"></i> Confirm Dispatch & Release Payout
+                            </button>
                         }
                     }
                     @if (Model.FulfilmentStatus == "Dispatched")
@@ -160,18 +194,122 @@
                         using (Html.BeginForm("ConfirmDelivery", "Supplier", FormMethod.Post, new { @class = "inline" }))
                         {
                             <input type="hidden" name="orderId" value="@Model.Id" />
-                            <button type="submit" class="btn btn-sm btn-success text-xs">Confirm Delivery</button>
+                            <button type="submit" class="btn btn-sm btn-dark text-xs font-bold px-3.5 py-1.5 rounded-lg shadow-sm">
+                                <i class="bi bi-shield-check me-1"></i> Confirm Delivery & Complete Order
+                            </button>
                         }
                     }
-                    <a href="@Url.Action("Invoices", "Supplier")" class="btn btn-sm btn-outline-dark text-xs"><i class="bi bi-receipt me-1"></i> Manage Invoices</a>
+                    <a href="@Url.Action("Invoices", "Supplier")" class="btn btn-sm btn-light border text-xs px-2.5 py-1.5 rounded-lg text-gray-700">
+                        <i class="bi bi-receipt me-1"></i> View Invoices
+                    </a>
                 </div>
             </div>
+
+            <!-- COMPLETE VISUAL TRANSACTION / ACTIVITY TIMELINE -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b pb-2">
+                    <div>
+                        <h6 class="font-bold text-xs text-gray-900 uppercase tracking-wider my-0">
+                            <i class="bi bi-clock-history me-1.5 text-blue-600"></i> End-to-End Activity Timeline
+                        </h6>
+                        <p class="text-[10px] text-gray-500 my-0">Chronological execution trace across Merchant, Supplier, NCBA Bank, and Automated System</p>
+                    </div>
+                    <span class="badge bg-blue-100 text-blue-800 text-[10px] font-bold">@auditLogs.Count System Events</span>
+                </div>
+
+                <div class="relative border-l-2 border-orange-200 ml-3 space-y-4 py-2">
+                    <!-- Standard Lifecycle Events -->
+                    <!-- 1. Order Creation -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#ff5f00] border-2 border-white"></div>
+                        <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-200 text-xs">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-gray-900">Purchase Order Created</strong>
+                                <span class="text-[10px] text-gray-400 font-mono">@Model.OrderDate.ToString("dd/MM/yyyy HH:mm:ss")</span>
+                            </div>
+                            <p class="text-gray-600 text-[11px] my-1">
+                                Merchant <strong>@(Model.Buyer?.User?.FullName ?? "Merchant")</strong> created PO <strong>#@Model.OrderNumber</strong> for <strong>KES @string.Format("{0:N0}", Model.TotalAmount)</strong> via <strong>@(Model.FundingPath ?? "BANK_FINANCED")</strong> path.
+                            </p>
+                            <div class="flex items-center gap-2 text-[10px]">
+                                <span class="badge bg-blue-100 text-blue-800">Role: Merchant</span>
+                                <span class="badge bg-amber-100 text-amber-800">Status: PendingSupplierApproval</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Supplier Acceptance & Auto-Invoice -->
+                    @if (Model.SupplierVerificationStatus == "VERIFIED" || currentStageIndex >= 1)
+                    {
+                        <div class="relative pl-6">
+                            <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white"></div>
+                            <div class="bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-200 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <strong class="text-emerald-900">Supplier Order Accepted & Invoice Auto-Generated</strong>
+                                    <span class="text-[10px] text-gray-500 font-mono">@Model.CreatedAt.AddMinutes(5).ToString("dd/MM/yyyy HH:mm:ss")</span>
+                                </div>
+                                <p class="text-emerald-800 text-[11px] my-1">
+                                    Supplier verified order items and system auto-generated invoice <strong>@(Model.Invoices.FirstOrDefault()?.InvoiceNumber ?? "INV-AUTO")</strong>.
+                                    @(Model.FundingPath == "BANK_FINANCED" ? "Posted to NCBA Bank for drawdown approval." : "Direct merchant funding confirmed.")
+                                </p>
+                                <div class="flex items-center gap-2 text-[10px]">
+                                    <span class="badge bg-emerald-100 text-emerald-800">Role: Supplier / System</span>
+                                    <span class="badge bg-blue-100 text-blue-800">Fulfilment: Accepted</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- 3. Dispatch & Payout Release -->
+                    @if (Model.FulfilmentStatus == "Dispatched" || currentStageIndex >= 3)
+                    {
+                        <div class="relative pl-6">
+                            <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-indigo-500 border-2 border-white"></div>
+                            <div class="bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-200 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <strong class="text-indigo-900">Inventory Dispatched & Supplier Payout Released</strong>
+                                    <span class="text-[10px] text-gray-500 font-mono">@(Model.DispatchedAt.HasValue ? Model.DispatchedAt.Value.ToString("dd/MM/yyyy HH:mm:ss") : DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss"))</span>
+                                </div>
+                                <p class="text-indigo-800 text-[11px] my-1">
+                                    Goods dispatched to merchant. Settlement payout of <strong>KES @string.Format("{0:N0}", Model.TotalAmount)</strong> released to supplier settlement account.
+                                </p>
+                                <div class="flex items-center gap-2 text-[10px]">
+                                    <span class="badge bg-indigo-100 text-indigo-800">Role: Supplier / NCBA Bank</span>
+                                    <span class="badge bg-green-100 text-green-800">PaymentStatus: PAID</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- 4. Delivery & Order Completion -->
+                    @if (Model.FulfilmentStatus == "Completed" || Model.DeliveryStatus == "DELIVERED" || currentStageIndex >= 4)
+                    {
+                        <div class="relative pl-6">
+                            <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-900 border-2 border-white"></div>
+                            <div class="bg-gray-100 p-2.5 rounded-lg border border-gray-300 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <strong class="text-gray-900">Delivery Confirmed & Transaction Completed</strong>
+                                    <span class="text-[10px] text-gray-500 font-mono">@(Model.DeliveredAt.HasValue ? Model.DeliveredAt.Value.ToString("dd/MM/yyyy HH:mm:ss") : DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss"))</span>
+                                </div>
+                                <p class="text-gray-800 text-[11px] my-1">
+                                    Delivery confirmed at merchant destination. Order lifecycle successfully closed and logged in TrustChain ledger.
+                                </p>
+                                <div class="flex items-center gap-2 text-[10px]">
+                                    <span class="badge bg-slate-200 text-slate-800">Role: System Orchestrator</span>
+                                    <span class="badge bg-green-100 text-green-800">Status: Completed</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                </div>
+            </div>
+
         </div>
 
-        <!-- RIGHT COLUMN: TrustChain Audit Event Log -->
+        <!-- RIGHT COLUMN: Cryptographic TrustChain Event Logs -->
         <div class="col-span-12 lg:col-span-4 space-y-3">
-            <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-shield-check text-green-600 me-1"></i> TrustChain Event Trail</h6>
+            <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+                <h6 class="font-bold text-xs text-gray-800 mb-2 border-b pb-1.5"><i class="bi bi-shield-check text-green-600 me-1"></i> TrustChain Cryptographic Ledger</h6>
                 @if (trustChainRecords.Count == 0)
                 {
                     <p class="text-xs text-gray-400">No TrustChain records registered for this order yet.</p>
@@ -181,14 +319,14 @@
                     <div class="space-y-2">
                         @foreach (var tc in trustChainRecords)
                         {
-                            <div class="p-2 bg-gray-50 rounded border border-gray-200 text-[10px]">
+                            <div class="p-2 bg-gray-50 rounded-lg border border-gray-200 text-[10px]">
                                 <div class="flex justify-between font-bold text-gray-800">
                                     <span>@tc.EventType</span>
                                     <span class="text-green-700">@tc.VerificationStatus</span>
                                 </div>
-                                <p class="text-gray-500 my-0.5">Date: @(tc.VerificationDate.HasValue ? tc.VerificationDate.Value.ToString("dd MMM yyyy, HH:mm") : tc.CreatedAt.ToString("dd MMM yyyy, HH:mm"))</p>
+                                <p class="text-gray-500 my-0.5">Timestamp: @(tc.VerificationDate.HasValue ? tc.VerificationDate.Value.ToString("dd/MM/yyyy HH:mm:ss") : tc.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss"))</p>
                                 <div class="font-mono text-[8px] text-gray-400 truncate" title="@tc.Hash">
-                                    Hash: @tc.Hash
+                                    SHA256: @tc.Hash
                                 </div>
                             </div>
                         }

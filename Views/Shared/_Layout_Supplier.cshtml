@@ -615,6 +615,9 @@
                                 <a href="@Url.Action("Orders", "Supplier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Supplier" && (currentAction == "Orders" || currentAction == "Requests" || currentAction == "OrderDetails") ? "active" : "")">
                                     <i class="bi bi-box"></i> My Orders
                                 </a>
+                                <a href="@Url.Action("Reports", "Supplier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Supplier" && currentAction == "Reports" ? "active" : "")">
+                                    <i class="bi bi-file-earmark-bar-graph"></i> Reports & Statements
+                                </a>
                                 <a href="@Url.Action("TrustChain", "Supplier")" class="nav-link-custom flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition text-xs @(currentController == "Supplier" && currentAction == "TrustChain" ? "active" : "")">
                                     <i class="bi bi-shield-check"></i> TrustChain Audit
                                 </a>

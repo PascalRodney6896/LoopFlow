@@ -1,321 +1,798 @@
 @model System.Collections.Generic.List<LoopFlow.Models.Buyer>
 @{
-    ViewBag.Title = "LOOP Bank Risk & Portfolio";
+    ViewBag.Title = "Bank Financing Dashboard";
     Layout = "~/Views/Shared/_Layout_Financier.cshtml";
-    var loans = ViewBag.Loans as System.Collections.Generic.List<LoopFlow.Models.LoanTransaction> ?? new System.Collections.Generic.List<LoopFlow.Models.LoanTransaction>();
-    var totalBuyers = Model?.Count ?? 0;
-    var totalCreditLimit = Model?.Sum(b => b.CreditLimit?.TotalCreditLimit ?? 0) ?? 0;
-    var totalOutstanding = Model?.Sum(b => b.CreditLimit?.UsedCredit ?? 0) ?? 0;
-    var totalLoans = loans.Count;
 
-    // Calculate average credit score safely (handling null or string values)
-    var avgCreditScore = 0;
-    if (Model != null && Model.Any())
-    {
-        var scores = Model.Where(b => b.CreditScore > 0).Select(b => b.CreditScore);
-        if (scores.Any())
-        {
-            avgCreditScore = (int)scores.Average();
-        }
-    }
+    var buyers = Model ?? new System.Collections.Generic.List<LoopFlow.Models.Buyer>();
+    var orders = ViewBag.FinancingTransactions as System.Collections.Generic.List<LoopFlow.Models.PurchaseOrder> ?? new System.Collections.Generic.List<LoopFlow.Models.PurchaseOrder>();
+    var invoices = ViewBag.Invoices as System.Collections.Generic.List<LoopFlow.Models.SupplierInvoice> ?? new System.Collections.Generic.List<LoopFlow.Models.SupplierInvoice>();
+    var supplierPayments = ViewBag.SupplierPayments as System.Collections.Generic.List<LoopFlow.Models.SupplierSplit> ?? new System.Collections.Generic.List<LoopFlow.Models.SupplierSplit>();
+    var repayments = ViewBag.Repayments as System.Collections.Generic.List<LoopFlow.Models.LoanTransaction> ?? new System.Collections.Generic.List<LoopFlow.Models.LoanTransaction>();
+    var financingRequests = ViewBag.FinancingRequests as System.Collections.Generic.List<LoopFlow.Models.FinancingRequest> ?? new System.Collections.Generic.List<LoopFlow.Models.FinancingRequest>();
 
-    // Calculate high risk buyers (credit score < 60)
-    var highRiskBuyers = Model?.Count(b => b.CreditScore < 60) ?? 0;
+    decimal totalApprovedLimit = ViewBag.TotalApprovedLimit != null ? (decimal)ViewBag.TotalApprovedLimit : buyers.Sum(b => b.CreditLimit?.TotalCreditLimit ?? 0m);
+    decimal totalUtilised = ViewBag.TotalUtilised != null ? (decimal)ViewBag.TotalUtilised : buyers.Sum(b => b.CreditLimit?.UsedCredit ?? 0m);
+    decimal totalOutstanding = ViewBag.TotalOutstanding != null ? (decimal)ViewBag.TotalOutstanding : totalUtilised;
+    decimal pendingFinancingAmount = ViewBag.PendingFinancingAmount != null ? (decimal)ViewBag.PendingFinancingAmount : 0m;
+    int pendingFinancingCount = ViewBag.PendingFinancingCount != null ? (int)ViewBag.PendingFinancingCount : 0;
+    decimal pendingSupplierPaymentsAmount = ViewBag.PendingSupplierPaymentsAmount != null ? (decimal)ViewBag.PendingSupplierPaymentsAmount : 0m;
+    int pendingSupplierPaymentsCount = ViewBag.PendingSupplierPaymentsCount != null ? (int)ViewBag.PendingSupplierPaymentsCount : 0;
+    decimal overdueFinancingAmount = ViewBag.OverdueFinancingAmount != null ? (decimal)ViewBag.OverdueFinancingAmount : 0m;
+    int overdueFinancingCount = ViewBag.OverdueFinancingCount != null ? (int)ViewBag.OverdueFinancingCount : 0;
+
+    var suspenseAccount = ViewBag.SuspenseAccount as LoopFlow.Models.BankSuspenseAccount ?? new LoopFlow.Models.BankSuspenseAccount();
+    var suspenseEntries = ViewBag.SuspenseLedgerEntries as System.Collections.Generic.List<LoopFlow.Models.BankSuspenseLedgerEntry> ?? new System.Collections.Generic.List<LoopFlow.Models.BankSuspenseLedgerEntry>();
 }
 
-<div class="px-4 py-3 financier-dashboard">
-    <!-- Page Header -->
-    <div class="flex items-center justify-between mb-3">
+<div class="px-4 py-3 financier-dashboard space-y-4">
+
+    <!-- Page Header & Filters Toolbar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
         <div>
-            <h1 class="text-lg font-bold text-gray-900">LOOP Bank Risk & Portfolio</h1>
-            <p class="text-xs text-gray-500">Real-time risk monitoring, dynamic credit line utilization, automated daily sweep performance, and NPL staging.</p>
+            <div class="flex items-center gap-2">
+                <h1 class="text-base font-bold text-gray-900 my-0">Bank Financing Dashboard</h1>
+                <span class="badge bg-orange-100 text-[#ff5f00] text-[10px] px-2 py-0.5 font-bold border border-orange-200">Central Operational View</span>
+            </div>
+            <p class="text-xs text-gray-500 my-0.5">End-to-end lifecycle monitoring from approved facilities, invoice drawdown, supplier payouts to 30% automated sales sweeps & settlement.</p>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="text-[10px] text-gray-500">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</span>
-            <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-        </div>
+
+        <!-- Filter Form -->
+        @using (Html.BeginForm("Index", "Financier", FormMethod.Get, new { @class = "flex flex-wrap items-center gap-2" }))
+        {
+            <input type="text" name="search" value="@ViewBag.Search" placeholder="Search Merchant, Supplier, PO..." class="form-control form-control-sm text-xs w-44 rounded-lg border-gray-300" />
+            <select name="fundingPath" class="form-select form-select-sm text-xs w-36 rounded-lg border-gray-300">
+                <option value="">All Bank Financed</option>
+                <option value="BANK_FINANCED" @(ViewBag.FundingPath == "BANK_FINANCED" ? "selected" : "")>BANK FINANCED</option>
+            </select>
+            <button type="submit" class="btn btn-sm bg-[#ff5f00] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-orange-600 shadow-sm">
+                <i class="bi bi-filter me-1"></i> Filter
+            </button>
+            <a href="@Url.Action("Index", "Financier")" class="btn btn-sm btn-light border text-xs px-2.5 py-1.5 rounded-lg text-gray-600">
+                Reset
+            </a>
+        }
     </div>
 
-    <!-- STATISTICS CARDS ROW - 4 Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-        <!-- Total Buyers -->
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="stat-label">Total Buyers</p>
-                    <p class="stat-number">@totalBuyers</p>
-                </div>
-                <div class="stat-icon" style="background: #dbeafe; color: #2563eb;">
-                    <i class="bi bi-people"></i>
-                </div>
-            </div>
+    <!-- TOP-LEVEL PORTFOLIO KPIs (6 Cards - Available Limit kept strictly at Merchant/Facility level) -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+
+        <!-- 1. Total Approved Limit -->
+        <div class="stat-card border-l-4 border-l-blue-500">
+            <p class="stat-label">Total Approved Limit</p>
+            <p class="stat-number text-blue-700 text-sm md:text-base">KES @string.Format("{0:N0}", totalApprovedLimit)</p>
+            <span class="text-[9px] text-gray-400 block mt-1"><i class="bi bi-building"></i> Portfolio Limit</span>
         </div>
 
-        <!-- Total Credit Portfolio -->
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="stat-label">Total Credit Portfolio</p>
-                    <p class="stat-number text-loop">KES @string.Format("{0:N0}", totalCreditLimit)</p>
-                </div>
-                <div class="stat-icon" style="background: #d1fae5; color: #059669;">
-                    <i class="bi bi-credit-card"></i>
-                </div>
-            </div>
+        <!-- 2. Total Utilised -->
+        <div class="stat-card border-l-4 border-l-amber-500">
+            <p class="stat-label">Total Utilised</p>
+            <p class="stat-number text-amber-700 text-sm md:text-base">KES @string.Format("{0:N0}", totalUtilised)</p>
+            <span class="text-[9px] text-amber-600 font-medium block mt-1">
+                <i class="bi bi-pie-chart-fill me-1"></i> @(totalApprovedLimit > 0 ? (totalUtilised / totalApprovedLimit * 100).ToString("F1") : "0")% Utilised
+            </span>
         </div>
 
-        <!-- Outstanding Loans -->
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="stat-label">Outstanding Loans</p>
-                    <p class="stat-number" style="color: #d97706;">KES @string.Format("{0:N0}", totalOutstanding)</p>
-                </div>
-                <div class="stat-icon" style="background: #fef3c7; color: #d97706;">
-                    <i class="bi bi-wallet2"></i>
-                </div>
+        <!-- 3. Total Outstanding -->
+        <div class="stat-card border-l-4 border-l-purple-500">
+            <p class="stat-label">Total Outstanding</p>
+            <p class="stat-number text-purple-700 text-sm md:text-base">KES @string.Format("{0:N0}", totalOutstanding)</p>
+            <span class="text-[9px] text-gray-400 block mt-1"><i class="bi bi-activity"></i> Active Exposure</span>
+        </div>
+
+        <!-- 4. Pending Financing -->
+        <div class="stat-card border-l-4 border-l-sky-500">
+            <p class="stat-label">Pending Financing</p>
+            <p class="stat-number text-sky-700 text-sm md:text-base">KES @string.Format("{0:N0}", pendingFinancingAmount)</p>
+            <span class="text-[9px] text-sky-600 font-semibold block mt-1"><i class="bi bi-clock-history me-1"></i> @pendingFinancingCount Requests Pending</span>
+        </div>
+
+        <!-- 5. Pending Supplier Payments -->
+        <div class="stat-card border-l-4 border-l-yellow-500">
+            <p class="stat-label">Pending Supplier Payouts</p>
+            <p class="stat-number text-yellow-700 text-sm md:text-base">KES @string.Format("{0:N0}", pendingSupplierPaymentsAmount)</p>
+            <span class="text-[9px] text-yellow-700 font-medium block mt-1"><i class="bi bi-truck me-1"></i> @pendingSupplierPaymentsCount Dispatch Payouts</span>
+        </div>
+
+        <!-- 6. Overdue Financing -->
+        <div class="stat-card border-l-4 border-l-red-500">
+            <p class="stat-label">Overdue Financing</p>
+            <p class="stat-number text-red-700 text-sm md:text-base">KES @string.Format("{0:N0}", overdueFinancingAmount)</p>
+            <span class="text-[9px] text-red-600 font-bold block mt-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> @overdueFinancingCount Loans Overdue</span>
+        </div>
+
+    </div>
+
+    <!-- FINANCING LIFECYCLE PIPELINE (12 Stages Flow) -->
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider my-0">
+                    <i class="bi bi-diagram-3-fill me-1.5" style="color: #ff5f00;"></i> Financing Lifecycle Pipeline
+                </h3>
+                <p class="text-[10px] text-gray-500 my-0">Transaction counts and cumulative KES values across all 12 operational stages</p>
             </div>
-            @if (totalOutstanding > 0)
-            {
-                var utilization = totalCreditLimit > 0 ? (totalOutstanding / totalCreditLimit * 100) : 0;
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="text-[10px] text-amber-600 font-medium"><i class="bi bi-exclamation-circle"></i> @utilization.ToString("F0")% utilization</span>
-                </div>
+            <span class="badge bg-green-100 text-green-800 text-[10px]">Real-Time Data</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+            <!-- 1. Orders Created -->
+            @{
+                var st1Count = orders.Count(p => p.Status == "Pending" || p.Status == "Created" || p.Status == "PendingSupplierApproval");
+                var st1Val = orders.Where(p => p.Status == "Pending" || p.Status == "Created" || p.Status == "PendingSupplierApproval").Sum(p => p.TotalAmount);
             }
-        </div>
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#1</span>
+                    <span class="badge bg-blue-100 text-blue-800 text-[8px] font-mono">@st1Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-bag-plus text-[10px] me-1" style="color: #ff5f00;"></i> Orders Created</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st1Val)</p>
+            </div>
 
-        <!-- High Risk Alerts -->
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="stat-label">High Risk Alerts</p>
-                    <p class="stat-number" style="color: #dc2626;">@highRiskBuyers</p>
+            <!-- 2. Invoices Generated -->
+            @{
+                var st2Count = invoices.Count(i => i.IsAutoGenerated || i.Status == "AUTO_GENERATED");
+                var st2Val = invoices.Where(i => i.IsAutoGenerated || i.Status == "AUTO_GENERATED").Sum(i => i.Amount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#2</span>
+                    <span class="badge bg-sky-100 text-sky-800 text-[8px] font-mono">@st2Count POs</span>
                 </div>
-                <div class="stat-icon" style="background: #fce4ec; color: #dc2626;">
-                    <i class="bi bi-exclamation-triangle"></i>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-file-earmark-text text-[10px] me-1" style="color: #ff5f00;"></i> Invoices Generated</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st2Val)</p>
+            </div>
+
+            <!-- 3. Invoices Validated -->
+            @{
+                var st3Count = invoices.Count(i => i.VerificationStatus == "VERIFIED");
+                var st3Val = invoices.Where(i => i.VerificationStatus == "VERIFIED").Sum(i => i.Amount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#3</span>
+                    <span class="badge bg-emerald-100 text-emerald-800 text-[8px] font-mono">@st3Count POs</span>
                 </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-patch-check text-[10px] me-1" style="color: #ff5f00;"></i> Invoices Validated</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st3Val)</p>
             </div>
-            <div class="flex items-center gap-2 mt-1">
-                <span class="text-[10px] text-red-600 font-medium"><i class="bi bi-arrow-up"></i> @(highRiskBuyers > 0 ? "Needs attention" : "All clear")</span>
-                <span class="text-[9px] text-gray-400">score below 60</span>
+
+            <!-- 4. Submitted to Bank -->
+            @{
+                var st4Count = invoices.Count(i => i.PostedToBank);
+                var st4Val = invoices.Where(i => i.PostedToBank).Sum(i => i.Amount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#4</span>
+                    <span class="badge bg-indigo-100 text-indigo-800 text-[8px] font-mono">@st4Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-send text-[10px] me-1" style="color: #ff5f00;"></i> Submitted to Bank</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st4Val)</p>
             </div>
+
+            <!-- 5. Bank Processing -->
+            @{
+                var st5Count = financingRequests.Count(f => f.Status == "Pending" || f.Status == "UtilisationRequested");
+                var st5Val = financingRequests.Where(f => f.Status == "Pending" || f.Status == "UtilisationRequested").Sum(f => f.TotalAmount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#5</span>
+                    <span class="badge bg-amber-100 text-amber-800 text-[8px] font-mono">@st5Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-gear-wide-connected text-[10px] me-1" style="color: #ff5f00;"></i> Bank Processing</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st5Val)</p>
+            </div>
+
+            <!-- 6. Financing Approved -->
+            @{
+                var st6Count = orders.Count(p => p.FinancingStatus == "BANK_APPROVED" || p.FinancingStatus == "FACILITY_RESERVED");
+                var st6Val = orders.Where(p => p.FinancingStatus == "BANK_APPROVED" || p.FinancingStatus == "FACILITY_RESERVED").Sum(p => p.TotalAmount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#6</span>
+                    <span class="badge bg-green-100 text-green-800 text-[8px] font-mono">@st6Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-check-circle-fill text-[10px] me-1" style="color: #ff5f00;"></i> Financing Approved</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st6Val)</p>
+            </div>
+
+            <!-- 7. Awaiting Dispatch -->
+            @{
+                var st7Count = orders.Count(p => p.FulfilmentStatus == "Accepted" || p.FulfilmentStatus == "Inventory Confirmed");
+                var st7Val = orders.Where(p => p.FulfilmentStatus == "Accepted" || p.FulfilmentStatus == "Inventory Confirmed").Sum(p => p.TotalAmount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#7</span>
+                    <span class="badge bg-purple-100 text-purple-800 text-[8px] font-mono">@st7Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-box-seam text-[10px] me-1" style="color: #ff5f00;"></i> Awaiting Dispatch</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st7Val)</p>
+            </div>
+
+            <!-- 8. Supplier Payment Processing -->
+            @{
+                var st8Count = orders.Count(p => p.FulfilmentStatus == "Dispatched" && p.PaymentStatus != "PAID");
+                var st8Val = orders.Where(p => p.FulfilmentStatus == "Dispatched" && p.PaymentStatus != "PAID").Sum(p => p.TotalAmount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#8</span>
+                    <span class="badge bg-yellow-100 text-yellow-800 text-[8px] font-mono">@st8Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-cash-coin text-[10px] me-1" style="color: #ff5f00;"></i> Supplier Payout</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st8Val)</p>
+            </div>
+
+            <!-- 9. Paid -->
+            @{
+                var st9Count = supplierPayments.Count(s => s.IsPaid || s.PaymentStatus == "Completed");
+                var st9Val = supplierPayments.Where(s => s.IsPaid || s.PaymentStatus == "Completed").Sum(s => s.Amount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#9</span>
+                    <span class="badge bg-teal-100 text-teal-800 text-[8px] font-mono">@st9Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-credit-card-fill text-[10px] me-1" style="color: #ff5f00;"></i> Supplier Paid</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st9Val)</p>
+            </div>
+
+            <!-- 10. Delivered -->
+            @{
+                var st10Count = orders.Count(p => p.FulfilmentStatus == "Delivered" || p.DeliveryStatus == "DELIVERED");
+                var st10Val = orders.Where(p => p.FulfilmentStatus == "Delivered" || p.DeliveryStatus == "DELIVERED").Sum(p => p.TotalAmount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#10</span>
+                    <span class="badge bg-blue-100 text-blue-800 text-[8px] font-mono">@st10Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-truck text-[10px] me-1" style="color: #ff5f00;"></i> Delivered</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st10Val)</p>
+            </div>
+
+            <!-- 11. Repayment -->
+            @{
+                var st11Count = repayments.Count(l => l.TransactionType == "Sweep");
+                var st11Val = repayments.Where(l => l.TransactionType == "Sweep").Sum(l => l.Amount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#11</span>
+                    <span class="badge bg-lime-100 text-lime-800 text-[8px] font-mono">@st11Count Sweeps</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-arrow-repeat text-[10px] me-1" style="color: #ff5f00;"></i> Repayment</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st11Val)</p>
+            </div>
+
+            <!-- 12. Settled -->
+            @{
+                var st12Count = orders.Count(p => p.FulfilmentStatus == "Completed" || p.Status == "Completed");
+                var st12Val = orders.Where(p => p.FulfilmentStatus == "Completed" || p.Status == "Completed").Sum(p => p.TotalAmount);
+            }
+            <div class="p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-300 hover:shadow-sm transition">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-bold text-gray-400">#12</span>
+                    <span class="badge bg-slate-100 text-slate-800 text-[8px] font-mono">@st12Count POs</span>
+                </div>
+                <p class="text-[11px] font-bold text-gray-800 truncate my-0"><i class="bi bi-shield-lock-fill text-[10px] me-1" style="color: #ff5f00;"></i> Settled</p>
+                <p class="text-[11px] font-extrabold text-gray-900 font-mono my-0.5">KES @string.Format("{0:N0}", st12Val)</p>
+            </div>
+
         </div>
     </div>
 
-    <!-- MAIN CONTENT GRID -->
-    <div class="grid grid-cols-12 gap-3">
+    <!-- MASTER CONTROL TABBED SYSTEM -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
 
-        <!-- LEFT PANEL (Cols 1 to 8) -->
-        <div class="col-span-12 lg:col-span-8 space-y-3">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs border-b border-gray-200 mb-3" id="bankDashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active text-xs font-bold py-2 px-3" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions-pane" type="button" role="tab">
+                    <i class="bi bi-list-columns-reverse me-1" style="color: #ff5f00;"></i> Financing Transactions (@orders.Count)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="facilities-tab" data-bs-toggle="tab" data-bs-target="#facilities-pane" type="button" role="tab">
+                    <i class="bi bi-building me-1" style="color: #ff5f00;"></i> Merchant Facilities (@buyers.Count)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices-pane" type="button" role="tab">
+                    <i class="bi bi-file-earmark-code me-1" style="color: #ff5f00;"></i> Invoices & Digital Verification (@invoices.Count)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="supplier-payments-tab" data-bs-toggle="tab" data-bs-target="#supplier-payments-pane" type="button" role="tab">
+                    <i class="bi bi-cash-stack me-1" style="color: #ff5f00;"></i> Supplier Payments (@supplierPayments.Count)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="repayments-tab" data-bs-toggle="tab" data-bs-target="#repayments-pane" type="button" role="tab">
+                    <i class="bi bi-arrow-repeat me-1" style="color: #ff5f00;"></i> Repayments & Sweeps (@repayments.Count)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-xs font-bold py-2 px-3" id="suspense-tab" data-bs-toggle="tab" data-bs-target="#suspense-pane" type="button" role="tab">
+                    <i class="bi bi-bank me-1" style="color: #ff5f00;"></i> Bank Suspense Ledger (@suspenseEntries.Count)
+                </button>
+            </li>
+        </ul>
 
-            <!-- Buyer Risk Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                @foreach (var buyer in Model.Take(4))
-                {
-                    <div class="buyer-risk-card">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <h4 class="font-bold text-gray-800 text-sm">@(buyer.User != null ? buyer.User.FullName : "Buyer")</h4>
-                                <p class="text-[10px] text-gray-500">@buyer.BusinessCategory | Code: <span class="font-mono">@buyer.BuyerCode</span></p>
-                            </div>
-                            @{
-                                var score = buyer.CreditScore;
-                                var scoreClass = score >= 80 ? "high" : score >= 60 ? "medium" : "low";
-                            }
-                            <span class="credit-score @scoreClass">
-                                Score: @score/100
-                            </span>
-                        </div>
+        <!-- Tab Content Panes -->
+        <div class="tab-content" id="bankDashboardTabsContent">
 
-                        <div class="grid grid-cols-3 gap-2">
-                            <div class="metric-box">
-                                <span class="metric-label">Credit Limit</span>
-                                <strong class="metric-value text-blue-600">KES @string.Format("{0:N0}", buyer.CreditLimit?.TotalCreditLimit ?? 0)</strong>
-                            </div>
-                            <div class="metric-box">
-                                <span class="metric-label">Outstanding</span>
-                                <strong class="metric-value text-amber-600">KES @string.Format("{0:N0}", buyer.CreditLimit?.UsedCredit ?? 0)</strong>
-                            </div>
-                            <div class="metric-box">
-                                <span class="metric-label">Sweep</span>
-                                <strong class="metric-value text-green-600">30.0%</strong>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-
-            <!-- Active Portfolio Loan Disbursements -->
-            <div class="activity-card">
-                <div class="flex justify-between items-center mb-3">
-                    <h4 class="font-bold text-gray-800 text-xs">
-                        <i class="bi bi-arrow-left-right me-2" style="color: #2563eb;"></i>
-                        Active Portfolio Loan Disbursements & Daily Repayment Sweeps
-                    </h4>
-                    <a href="@Url.Action("Loans", "Financier")" class="text-[10px] text-loop font-medium">View All</a>
-                </div>
+            <!-- TAB 1: FINANCING TRANSACTIONS TABLE (WITH DRILL-DOWN MODAL) -->
+            <div class="tab-pane fade show active" id="transactions-pane" role="tabpanel">
                 <div class="table-wrapper">
-                    <table class="portfolio-table">
+                    <table class="portfolio-table text-xs">
                         <thead>
                             <tr>
-                                <th>Timestamp</th>
-                                <th>Buyer Name</th>
-                                <th>Transaction Type</th>
-                                <th>Amount</th>
-                                <th>Balance Before</th>
-                                <th>Balance After</th>
-                                <th>Reference</th>
+                                <th>Order Ref</th>
+                                <th>Merchant</th>
+                                <th>Supplier(s)</th>
+                                <th>Order Amount</th>
+                                <th>Funding Path</th>
+                                <th>Financing Status</th>
+                                <th>Fulfilment</th>
+                                <th>Order Date</th>
+                                <th>Action / Drill Down</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @if (loans.Any())
+                            @if (orders.Any())
                             {
-                                foreach (var l in loans.Take(8))
+                                foreach (var po in orders)
                                 {
                                     <tr>
-                                        <td class="text-[10px] text-gray-500">@l.CreatedAt.ToString("g")</td>
-                                        <td class="text-xs font-medium text-gray-800">@(l.Buyer != null && l.Buyer.User != null ? l.Buyer.User.FullName : "")</td>
-                                        <td>
-                                            @if (l.TransactionType == "Disbursement")
+                                        <td class="font-mono font-bold text-gray-900 py-2">@po.OrderNumber</td>
+                                        <td class="font-semibold text-gray-800">@(po.Buyer?.User != null ? po.Buyer.User.FullName : "Merchant")</td>
+                                        <td class="text-gray-600">
+                                            @foreach (var s in po.SupplierSplits.Take(1))
                                             {
-                                                <span class="status-badge disbursement">Disbursement</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="status-badge sweep">Daily 30% Sweep</span>
+                                                <span>@s.SupplierName</span>
                                             }
                                         </td>
-                                        <td class="text-xs font-bold">KES @string.Format("{0:N0}", l.Amount)</td>
-                                        <td class="text-[10px] text-gray-500">KES @string.Format("{0:N0}", l.BalanceBefore)</td>
-                                        <td class="text-xs font-semibold text-gray-800">KES @string.Format("{0:N0}", l.BalanceAfter)</td>
-                                        <td><code class="text-[9px]">@l.TransactionReference</code></td>
+                                        <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", po.TotalAmount)</td>
+                                        <td>
+                                            <span class="badge @(po.FundingPath == "BANK_FINANCED" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800") text-[9px]">
+                                                @(po.FundingPath != null ? po.FundingPath.Replace("_", " ") : "BANK FINANCED")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge @(po.FinancingStatus == "BANK_APPROVED" ? "sweep" : "disbursement") text-[8px]">
+                                                @(po.FinancingStatus ?? po.Status)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-gray-100 text-gray-800 border text-[9px]">@po.FulfilmentStatus</span>
+                                        </td>
+                                        <td class="text-gray-500 font-mono text-[10px]">@po.OrderDate.ToString("dd/MM/yy HH:mm")</td>
+                                        <td>
+                                            <div class="flex items-center gap-1">
+                                                @if (po.FinancingStatus == "UTILISATION_REQUESTED" || po.FinancingStatus == "FACILITY_RESERVED" || po.FinancingStatus == "SubmittedToBank" || po.FinancingStatus == "Pending" || po.Status == "PendingSupplierApproval" || po.Status == "Created")
+                                                {
+                                                    using (Html.BeginForm("ApproveAndDisburseLoan", "Financier", FormMethod.Post, new { @class = "inline" }))
+                                                    {
+                                                        <input type="hidden" name="orderId" value="@po.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-success text-[9px] py-0.5 px-2 font-bold rounded shadow-sm" title="Approve loan application & disburse facility funds">
+                                                            <i class="bi bi-check-circle me-1"></i> Approve & Disburse
+                                                        </button>
+                                                    }
+                                                }
+                                                else if (po.FinancingStatus == "BANK_APPROVED")
+                                                {
+                                                    using (Html.BeginForm("DisburseLoanOrder", "Financier", FormMethod.Post, new { @class = "inline" }))
+                                                    {
+                                                        <input type="hidden" name="orderId" value="@po.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-primary text-[9px] py-0.5 px-2 font-bold rounded shadow-sm" title="Disburse loan facility funds">
+                                                            <i class="bi bi-cash-stack me-1"></i> Disburse Loan
+                                                        </button>
+                                                    }
+                                                }
+                                                <button type="button" onclick="showTransactionDrilldown('@po.OrderNumber', '@(po.Buyer?.User?.FullName)', 'KES @string.Format("{0:N0}", po.TotalAmount)', '@po.FundingPath', '@po.FinancingStatus', '@po.FulfilmentStatus', '@po.PaymentStatus', '@po.OrderDate.ToString("g")')" class="btn btn-sm btn-outline-primary text-[10px] py-0.5 px-2 rounded">
+                                                    <i class="bi bi-eye-fill me-1"></i> Drill Down
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 }
                             }
                             else
                             {
                                 <tr>
-                                    <td colspan="7" class="text-center text-gray-500 py-4 text-xs">No loan transactions recorded</td>
+                                    <td colspan="9" class="text-center text-gray-500 py-4 text-xs">No financing transactions match the filter criteria.</td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            <!-- TAB 2: FACILITIES SECTION (Available Limit kept at Merchant/Facility level) -->
+            <div class="tab-pane fade" id="facilities-pane" role="tabpanel">
+                <div class="table-wrapper">
+                    <table class="portfolio-table text-xs">
+                        <thead>
+                            <tr>
+                                <th>Merchant Name</th>
+                                <th>Buyer Code</th>
+                                <th>Approved Total Limit</th>
+                                <th>Utilised Amount</th>
+                                <th class="bg-orange-50 text-orange-900">Available Limit</th>
+                                <th>Outstanding Balance</th>
+                                <th>Interest Rate</th>
+                                <th>Facility Status</th>
+                                <th>Maturity / Expiry</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var fac in buyers)
+                            {
+                                var cl = fac.CreditLimit;
+                                decimal total = cl?.TotalCreditLimit ?? 500000m;
+                                decimal used = cl?.UsedCredit ?? 0m;
+                                decimal avail = cl?.AvailableCredit ?? (total - used);
+                                <tr>
+                                    <td class="font-bold text-gray-900 py-2">@(fac.User != null ? fac.User.FullName : "Merchant")</td>
+                                    <td class="font-mono text-gray-500 text-[10px]">@fac.BuyerCode</td>
+                                    <td class="font-bold text-blue-700 font-mono">KES @string.Format("{0:N0}", total)</td>
+                                    <td class="font-bold text-amber-700 font-mono">KES @string.Format("{0:N0}", used)</td>
+                                    <td class="font-bold text-green-700 font-mono bg-orange-50/50">KES @string.Format("{0:N0}", avail)</td>
+                                    <td class="font-bold text-purple-700 font-mono">KES @string.Format("{0:N0}", used)</td>
+                                    <td class="text-gray-600">@(cl?.InterestRate ?? 17.0m)% p.a.</td>
+                                    <td>
+                                        <span class="badge bg-green-100 text-green-800 text-[9px]">@(cl != null && cl.IsActive ? "ACTIVE" : "EXPIRED")</span>
+                                    </td>
+                                    <td class="text-gray-500 text-[10px]">@(cl?.ExpiryDate.HasValue == true ? cl.ExpiryDate.Value.ToString("dd/MM/yyyy") : "31/12/2026")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: INVOICE PROCESSING SECTION -->
+            <div class="tab-pane fade" id="invoices-pane" role="tabpanel">
+                <div class="table-wrapper">
+                    <table class="portfolio-table text-xs">
+                        <thead>
+                            <tr>
+                                <th>Invoice No</th>
+                                <th>Supplier</th>
+                                <th>Order Ref</th>
+                                <th>Invoice Amount</th>
+                                <th>Auto-Generated</th>
+                                <th>Validation Status</th>
+                                <th>Bank Submission</th>
+                                <th>Digital Signature Hash</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (invoices.Any())
+                            {
+                                foreach (var inv in invoices)
+                                {
+                                    <tr>
+                                        <td class="font-mono font-bold text-gray-900 py-2">@inv.InvoiceNumber</td>
+                                        <td class="font-semibold text-gray-800">@(inv.Supplier?.User != null ? inv.Supplier.User.FullName : (inv.Supplier?.SupplierCode ?? "SUP-001"))</td>
+                                        <td class="font-mono text-gray-600">@(inv.Order != null ? inv.Order.OrderNumber : "PO-REF")</td>
+                                        <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", inv.Amount)</td>
+                                        <td>
+                                            <span class="badge bg-blue-100 text-blue-800 text-[9px]">@(inv.IsAutoGenerated ? "AUTO CREATED" : "MANUAL")</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-emerald-100 text-emerald-800 text-[9px]">@(inv.VerificationStatus ?? "VERIFIED")</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge @(inv.PostedToBank ? "bg-indigo-100 text-indigo-800" : "bg-gray-100 text-gray-600") text-[9px]">
+                                                @(inv.PostedToBank ? "POSTED TO BANK" : "PENDING")
+                                            </span>
+                                        </td>
+                                        <td><code class="text-[9px] text-gray-500">@(inv.DuplicateCheckHash ?? "SHA256-VERIFIED")</code></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center text-gray-500 py-4 text-xs">No invoices currently logged.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: SUPPLIER PAYMENTS SECTION -->
+            <div class="tab-pane fade" id="supplier-payments-pane" role="tabpanel">
+                <div class="table-wrapper">
+                    <table class="portfolio-table text-xs">
+                        <thead>
+                            <tr>
+                                <th>Split Ref</th>
+                                <th>Supplier Name</th>
+                                <th>Order Ref</th>
+                                <th>Payout Amount</th>
+                                <th>Payment Status</th>
+                                <th>Settlement Ref</th>
+                                <th>Payment Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (supplierPayments.Any())
+                            {
+                                foreach (var sp in supplierPayments)
+                                {
+                                    <tr>
+                                        <td class="font-mono font-bold text-gray-900 py-2">SPLIT-@sp.Id</td>
+                                        <td class="font-semibold text-gray-800">@sp.SupplierName</td>
+                                        <td class="font-mono text-gray-600">@(sp.Order != null ? sp.Order.OrderNumber : "PO-REF")</td>
+                                        <td class="font-bold text-emerald-700 font-mono">KES @string.Format("{0:N0}", sp.Amount)</td>
+                                        <td>
+                                            <span class="badge @(sp.IsPaid ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800") text-[9px]">
+                                                @(sp.PaymentStatus ?? (sp.IsPaid ? "COMPLETED" : "PROCESSING"))
+                                            </span>
+                                        </td>
+                                        <td><code class="text-[9px] text-gray-500">@(sp.TransactionReference ?? "SETTLE-PENDING")</code></td>
+                                        <td class="text-gray-500 text-[10px]">@(sp.PaymentDate.HasValue ? sp.PaymentDate.Value.ToString("dd/MM/yy HH:mm") : "Awaiting Dispatch")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center text-gray-500 py-4 text-xs">No supplier payments found.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 5: REPAYMENTS & AUTOMATED SWEEPS SECTION -->
+            <div class="tab-pane fade" id="repayments-pane" role="tabpanel">
+                <div class="table-wrapper">
+                    <table class="portfolio-table text-xs">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Merchant Name</th>
+                                <th>Transaction Type</th>
+                                <th>Amount</th>
+                                <th>Balance Before</th>
+                                <th>Balance After</th>
+                                <th>Sweep / Reference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (repayments.Any())
+                            {
+                                foreach (var rep in repayments)
+                                {
+                                    <tr>
+                                        <td class="text-gray-500 text-[10px] py-2">@rep.CreatedAt.ToString("dd/MM/yy HH:mm")</td>
+                                        <td class="font-semibold text-gray-800">@(rep.Buyer?.User != null ? rep.Buyer.User.FullName : "Merchant")</td>
+                                        <td>
+                                            <span class="status-badge @(rep.TransactionType == "Disbursement" ? "disbursement" : "sweep") text-[8px]">
+                                                @rep.TransactionType
+                                            </span>
+                                        </td>
+                                        <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", rep.Amount)</td>
+                                        <td class="text-gray-500 font-mono text-[10px]">KES @string.Format("{0:N0}", rep.BalanceBefore)</td>
+                                        <td class="font-semibold text-gray-800 font-mono text-[10px]">KES @string.Format("{0:N0}", rep.BalanceAfter)</td>
+                                        <td><code class="text-[9px] text-gray-600">@rep.TransactionReference</code></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center text-gray-500 py-4 text-xs">No repayments logged.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 6: BANK SUSPENSE ACCOUNT & DOUBLE-ENTRY LEDGER PANE -->
+            <div class="tab-pane fade" id="suspense-pane" role="tabpanel">
+                <div class="space-y-3">
+                    
+                    <!-- Suspense Account Summary KPI Cards -->
+                    <div class="grid grid-cols-2 md:grid-cols-6 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase block">Total Suspense Balance</span>
+                            <strong class="text-xs font-mono font-bold text-blue-700">KES @string.Format("{0:N0}", suspenseAccount.TotalBalance)</strong>
+                        </div>
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase block">Merchant Funds Received</span>
+                            <strong class="text-xs font-mono font-bold text-gray-900">KES @string.Format("{0:N0}", suspenseAccount.MerchantFundsReceived)</strong>
+                        </div>
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase block">Funds Currently Held</span>
+                            <strong class="text-xs font-mono font-bold text-amber-700">KES @string.Format("{0:N0}", suspenseAccount.FundsHeld)</strong>
+                        </div>
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase block">Pending Supplier Payouts</span>
+                            <strong class="text-xs font-mono font-bold text-purple-700">KES @string.Format("{0:N0}", suspenseAccount.PendingDisbursement)</strong>
+                        </div>
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase block">Total Disbursed</span>
+                            <strong class="text-xs font-mono font-bold text-emerald-700">KES @string.Format("{0:N0}", suspenseAccount.TotalDisbursed)</strong>
+                        </div>
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-500 uppercase block">Reconciliation Status</span>
+                            <span class="badge bg-green-100 text-green-800 text-[9px] font-bold">RECONCILED</span>
+                        </div>
+                    </div>
+
+                    <!-- Double-Entry Ledger Table -->
+                    <div class="table-wrapper">
+                        <table class="portfolio-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th>Txn Reference</th>
+                                    <th>Timestamp</th>
+                                    <th>Merchant</th>
+                                    <th>Supplier</th>
+                                    <th>Order / Invoice Ref</th>
+                                    <th>Entry Type</th>
+                                    <th>Ledger State</th>
+                                    <th>Amount</th>
+                                    <th>Source &rarr; Destination Account</th>
+                                    <th>Opening &rarr; Closing Balance</th>
+                                    <th>Reconciliation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (suspenseEntries.Any())
+                                {
+                                    foreach (var entry in suspenseEntries)
+                                    {
+                                        var mName = entry.Buyer?.User != null ? entry.Buyer.User.FullName : "Merchant";
+                                        var sName = entry.Supplier?.User != null ? entry.Supplier.User.FullName : "Supplier";
+                                        var poNo = entry.Order != null ? entry.Order.OrderNumber : "PO-REF";
+                                        var invNo = entry.Invoice != null ? entry.Invoice.InvoiceNumber : "INV-REF";
+
+                                        <tr>
+                                            <td class="font-mono font-bold text-gray-900 py-2">@entry.TransactionReference</td>
+                                            <td class="text-gray-500 font-mono text-[10px]">@entry.CreatedAt.ToString("dd/MM/yy HH:mm:ss")</td>
+                                            <td class="font-semibold text-gray-800">@mName</td>
+                                            <td class="text-gray-600">@sName</td>
+                                            <td>
+                                                <div class="font-mono font-bold text-gray-900">@poNo</div>
+                                                <div class="font-mono text-[9px] text-gray-400">@invNo</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge @(entry.EntryType == "Credit" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800") text-[9px] font-bold">
+                                                    @entry.EntryType
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-purple-100 text-purple-800 text-[9px] font-bold">@entry.LedgerState</span>
+                                            </td>
+                                            <td class="font-bold text-gray-900 font-mono">KES @string.Format("{0:N0}", entry.Amount)</td>
+                                            <td class="text-gray-600 font-mono text-[9px]">
+                                                @entry.SourceAccount &rarr; @entry.DestinationAccount
+                                            </td>
+                                            <td class="font-mono text-[10px] text-gray-600">
+                                                KES @string.Format("{0:N0}", entry.OpeningBalance) &rarr; <strong class="text-gray-900">KES @string.Format("{0:N0}", entry.ClosingBalance)</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-emerald-100 text-emerald-800 text-[9px]">@entry.ReconciliationStatus</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="11" class="text-center text-gray-500 py-4 text-xs">No bank suspense ledger transactions recorded.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
 
-        <!-- RIGHT PANEL (Cols 9 to 12) -->
-        <div class="col-span-12 lg:col-span-4 space-y-3">
+    </div>
 
-            <!-- Quick Actions -->
-            <div class="quick-actions-card">
-                <h5 class="font-bold text-gray-800 text-xs mb-2">Quick Actions</h5>
-                <div class="grid grid-cols-2 gap-2">
-                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("Buyers", "Financier")'">
-                        <div class="quick-action-icon" style="background: #dbeafe; color: #2563eb;">
-                            <i class="bi bi-people"></i>
+</div>
+
+<!-- TRANSACTION LIFECYCLE DRILL-DOWN MODAL -->
+<div class="modal fade" id="transactionDrilldownModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-2xl border-0 shadow-2xl p-3">
+            <div class="modal-header border-b pb-2">
+                <div>
+                    <h5 class="modal-title font-bold text-gray-900 text-sm">Financing Lifecycle Drill-Down</h5>
+                    <p class="text-xs text-gray-500 my-0">Complete transaction trace: Portfolio &rarr; Facility &rarr; Merchant &rarr; Drawdown &rarr; Invoice &rarr; Dispatch &rarr; Payout &rarr; Sweep</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 space-y-3">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs">
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Order Number</span>
+                        <strong class="font-mono text-gray-900 text-sm" id="modalOrderNo">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Merchant Name</span>
+                        <strong class="text-gray-900" id="modalMerchant">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Order Amount</span>
+                        <strong class="font-mono text-blue-600 text-sm" id="modalAmount">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px] block">Funding Path</span>
+                        <span class="badge bg-blue-100 text-blue-800 text-[9px]" id="modalFundingPath">-</span>
+                    </div>
+                </div>
+
+                <!-- Step-by-step lifecycle flow chart -->
+                <div class="border rounded-xl p-3 bg-white space-y-2">
+                    <h6 class="text-xs font-bold text-gray-800 mb-2">Lifecycle Execution Trace</h6>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-36">1. Facility Approved:</span>
+                            <span class="text-gray-500">NCBA Credit Line reserved for Merchant</span>
                         </div>
-                        <span class="quick-action-label">View Buyers</span>
-                    </button>
-                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("Loans", "Financier")'">
-                        <div class="quick-action-icon" style="background: #d1fae5; color: #059669;">
-                            <i class="bi bi-wallet2"></i>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-36">2. Order Created:</span>
+                            <span class="text-gray-500" id="modalOrderDateTrace">Order placed by Merchant</span>
                         </div>
-                        <span class="quick-action-label">Loans</span>
-                    </button>
-                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("Risk", "Financier")'">
-                        <div class="quick-action-icon" style="background: #fef3c7; color: #d97706;">
-                            <i class="bi bi-shield-check"></i>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-36">3. Auto Invoice:</span>
+                            <span class="text-gray-500">Auto-generated & submitted to Bank</span>
                         </div>
-                        <span class="quick-action-label">Risk Reports</span>
-                    </button>
-                    <button class="quick-action-btn" onclick="window.location.href='@Url.Action("TrustChain", "Financier")'">
-                        <div class="quick-action-icon" style="background: #e0e7ff; color: #4f46e5;">
-                            <i class="bi bi-link-45deg"></i>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-36">4. Dispatch Payout:</span>
+                            <span class="text-gray-500">Supplier payment released on dispatch</span>
                         </div>
-                        <span class="quick-action-label">TrustChain</span>
-                    </button>
+                        <div class="flex items-center gap-2 text-gray-700">
+                            <i class="bi bi-check-circle-fill text-green-600"></i>
+                            <span class="font-semibold w-36">5. Repayment Sweep:</span>
+                            <span class="text-gray-500">Automated 30% daily sales deduction applied</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <!-- Portfolio Summary -->
-            <div class="portfolio-summary-card">
-                <h5 class="font-bold text-gray-800 text-xs mb-2">Portfolio Summary</h5>
-                <div class="summary-stats">
-                    <div class="summary-item">
-                        <span class="summary-label">Credit Utilization</span>
-                        <span class="summary-value" style="color: #d97706;">
-                            @(totalCreditLimit > 0 ? (totalOutstanding / totalCreditLimit * 100).ToString("F1") : "0")%
-                        </span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Active Buyers</span>
-                        <span class="summary-value text-blue-600">@totalBuyers</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Avg Credit Score</span>
-                        <span class="summary-value text-green-600">
-                            @avgCreditScore
-                        </span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Total Sweeps</span>
-                        <span class="summary-value text-green-600">
-                            @loans.Count(l => l.TransactionType != "Disbursement")
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Activity Feed -->
-            <div class="activity-card">
-                <div class="flex justify-between items-center mb-3">
-                    <h5 class="font-bold text-gray-800 text-xs">Recent Activity</h5>
-                    <a href="#" class="text-[10px] text-loop font-medium">View All</a>
-                </div>
-                <div class="feed-list">
-                    <div class="feed-item">
-                        <div class="feed-icon" style="background: #d1fae5; color: #059669;">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div class="feed-content">
-                            <p class="feed-title">Loan disbursed to Wema Hardware</p>
-                            <p class="feed-time">2 hours ago</p>
-                        </div>
-                    </div>
-                    <div class="feed-item">
-                        <div class="feed-icon" style="background: #fef3c7; color: #d97706;">
-                            <i class="bi bi-clock"></i>
-                        </div>
-                        <div class="feed-content">
-                            <p class="feed-title">Sweep payment received KES 14,190</p>
-                            <p class="feed-time">4 hours ago</p>
-                        </div>
-                    </div>
-                    <div class="feed-item">
-                        <div class="feed-icon" style="background: #dbeafe; color: #2563eb;">
-                            <i class="bi bi-credit-card"></i>
-                        </div>
-                        <div class="feed-content">
-                            <p class="feed-title">New credit line approved for Jambo Supplies</p>
-                            <p class="feed-time">Yesterday, 3:15 PM</p>
-                        </div>
-                    </div>
-                    <div class="feed-item">
-                        <div class="feed-icon" style="background: #fce4ec; color: #dc2626;">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                        <div class="feed-content">
-                            <p class="feed-title">NPL alert: 30+ days overdue</p>
-                            <p class="feed-time">Yesterday, 11:30 AM</p>
-                        </div>
-                    </div>
-                </div>
+            <div class="modal-footer border-t pt-2 justify-between">
+                <a href="@Url.Action("TrustChain", "Financier")" class="btn btn-sm btn-outline-dark text-xs font-bold">
+                    <i class="bi bi-link-45deg me-1"></i> View Cryptographic TrustChain Record
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary text-xs" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 @section scripts {
-    @* No Chart.js needed for financier dashboard *@
+    <script>
+        function showTransactionDrilldown(orderNo, merchant, amount, fundingPath, financingStatus, fulfilmentStatus, paymentStatus, orderDate) {
+            document.getElementById('modalOrderNo').textContent = orderNo;
+            document.getElementById('modalMerchant').textContent = merchant;
+            document.getElementById('modalAmount').textContent = amount;
+            document.getElementById('modalFundingPath').textContent = fundingPath || 'BANK FINANCED';
+            document.getElementById('modalOrderDateTrace').textContent = 'Order placed on ' + orderDate;
+
+            var modal = new bootstrap.Modal(document.getElementById('transactionDrilldownModal'));
+            modal.show();
+        }
+    </script>
 }

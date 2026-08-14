@@ -175,6 +175,7 @@
     <Compile Include="Controllers\SupplierController.cs" />
     <Compile Include="Controllers\FinancierController.cs" />
     <Compile Include="Controllers\LoopWebhookController.cs" />
+    <Compile Include="Controllers\LoopPaymentsApiController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -203,10 +204,15 @@
     <Compile Include="Models\SystemSetting.cs" />
     <Compile Include="Models\BankSuspenseAccount.cs" />
     <Compile Include="Models\BankSuspenseLedgerEntry.cs" />
+    <Compile Include="Models\LoopTransaction.cs" />
     <Compile Include="Models\ApplicationDbContext.cs" />
     <Compile Include="Models\DbInitializer.cs" />
     <Compile Include="Models\BankFinancingDashboardViewModel.cs" />
     <Compile Include="Services\LoopApiService.cs" />
+    <Compile Include="Services\LoopAuthService.cs" />
+    <Compile Include="Services\LoopSignatureService.cs" />
+    <Compile Include="Services\LoopNormalizedResponse.cs" />
+    <Compile Include="Services\LoopClientService.cs" />
     <Compile Include="Services\TrustChainService.cs" />
     <Compile Include="Services\SettlementOrchestrator.cs" />
     <Compile Include="Services\SweepEngine.cs" />

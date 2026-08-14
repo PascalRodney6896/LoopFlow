@@ -42,6 +42,7 @@ namespace LoopFlow.Models
         public DbSet<SystemSetting> SystemSettings { get; set; }
         public DbSet<BankSuspenseAccount> BankSuspenseAccounts { get; set; }
         public DbSet<BankSuspenseLedgerEntry> BankSuspenseLedgerEntries { get; set; }
+        public DbSet<LoopTransaction> LoopTransactions { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {

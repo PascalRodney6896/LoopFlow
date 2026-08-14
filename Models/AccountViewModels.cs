@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace LoopFlow.Models
@@ -48,11 +48,12 @@ namespace LoopFlow.Models
 
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "Username or Email is required.")]
-        [Display(Name = "Username or Email")]
-        public string UsernameOrEmail { get; set; }
+        [Required]
+        [Display(Name = "Email")]
+        [EmailAddress]
+        public string Email { get; set; }
 
-        [Required(ErrorMessage = "Password is required.")]
+        [Required]
         [DataType(DataType.Password)]
         [Display(Name = "Password")]
         public string Password { get; set; }

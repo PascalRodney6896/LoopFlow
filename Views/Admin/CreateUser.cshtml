@@ -1,0 +1,81 @@
+@{
+    ViewBag.Title = "Create New User Account";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var roles = ViewBag.Roles as System.Collections.Generic.List<LoopFlow.Models.Role> ?? new System.Collections.Generic.List<LoopFlow.Models.Role>();
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="glass-card p-4 p-md-5">
+
+                <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-secondary border-opacity-25">
+                    <a href="@Url.Action("Users", "Admin")" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Back</a>
+                    <div>
+                        <h3 class="fw-bold text-white mb-0"><i class="bi bi-person-plus text-info me-2"></i> Create User Account</h3>
+                        <p class="text-muted small mb-0">Register a new Merchant, Financier, Supplier, or Admin user</p>
+                    </div>
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger p-3 mb-4" role="alert">
+                        @Html.ValidationSummary(true, "", new { @class = "m-0" })
+                    </div>
+                }
+
+                @using (Html.BeginForm("CreateUser", "Admin", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-semibold">Full Name *</label>
+                            <input type="text" name="fullName" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Jane Doe" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-semibold">Username</label>
+                            <input type="text" name="username" class="form-control bg-dark text-white border-secondary" placeholder="e.g. janedoe (optional)" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-semibold">Email Address *</label>
+                            <input type="email" name="email" class="form-control bg-dark text-white border-secondary" placeholder="jane@example.com" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-semibold">Phone Number</label>
+                            <input type="text" name="phoneNumber" class="form-control bg-dark text-white border-secondary" placeholder="+254712345678" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-semibold">Business Name</label>
+                            <input type="text" name="businessName" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Rift Supplies Ltd" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-semibold">Assigned System Role *</label>
+                            <select name="roleId" class="form-select bg-dark text-white border-secondary" required>
+                                <option value="">-- Select Role --</option>
+                                @foreach (var r in roles)
+                                {
+                                    <option value="@r.Id">@r.Name - @r.Description</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-semibold">Initial Password *</label>
+                            <input type="password" name="password" class="form-control bg-dark text-white border-secondary" placeholder="Minimum 6 characters" required minlength="6" />
+                            <span class="text-muted text-xs mt-1 d-block"><i class="bi bi-info-circle me-1"></i> The user will be required to change their password upon first login.</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary border-opacity-25">
+                        <a href="@Url.Action("Users", "Admin")" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-loop btn-lg"><i class="bi bi-check-circle me-1"></i> Create User</button>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+</div>
